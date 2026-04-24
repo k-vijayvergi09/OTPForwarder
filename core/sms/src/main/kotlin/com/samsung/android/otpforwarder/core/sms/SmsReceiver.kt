@@ -8,9 +8,6 @@ import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.util.Log
 import androidx.core.content.ContextCompat
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.samsung.android.otpforwarder.core.domain.DetectOtpUseCase
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -21,6 +18,10 @@ private const val TAG = "SmsReceiver"
 
 /**
  * Listens for incoming SMS messages and pipes detected OTPs into [SmsEventBus].
+ *
+ * WorkManager enqueueing is intentionally NOT done here — [ForwardingDispatcher]
+ * collects from [SmsEventBus] in ApplicationScope and handles that responsibility.
+ * Keeping the receiver focused on parse→detect→record keeps it fast and testable.
  */
 @AndroidEntryPoint
 class SmsReceiver : BroadcastReceiver() {
@@ -89,26 +90,22 @@ class SmsReceiver : BroadcastReceiver() {
                     otpEvent.sender,
                 )
 
-                // Persist the detection so the Logs/Home screens update immediately
+                // Persist the detection so the Logs/Home screens update immediately.
                 forwardingRepository.recordDetectedOtp(otpEvent)
                 Log.i(TAG, "Persisted OTP event id=${otpEvent.id}")
 
-                // Broadcast to subscribers (WorkManager workers, forwarding service, etc.)
+                // Broadcast to ForwardingDispatcher (ApplicationScope collector) which
+                // will enqueue ForwardingWorker. Using tryEmit here is safe because
+                // SmsEventBus has a 64-event buffer and ForwardingDispatcher is always
+                // running while the process is alive.
                 val emitted = eventBus.emit(otpEvent)
                 Log.i(TAG, "EventBus emit emitted=$emitted for id=${otpEvent.id}")
                 if (!emitted) {
                     Timber.w("SmsReceiver: eventBus buffer full — OTP event dropped id=%s", otpEvent.id)
                 }
-
-                // Enqueue the ForwardingWorker to handle SMS dispatch
-                val workRequest = OneTimeWorkRequestBuilder<ForwardingWorker>()
-                    .setInputData(workDataOf(ForwardingWorker.KEY_EVENT_ID to otpEvent.id))
-                    .build()
-                WorkManager.getInstance(context).enqueue(workRequest)
-                Log.i(TAG, "Enqueued ForwardingWorker for event id=${otpEvent.id}")
             } else {
-                Log.i(TAG, "No OTP detected in SMS from sender=${message.sender}")
-                Timber.d("SmsReceiver: no OTP in message from sender=%s", message.sender)
+                Log.i(TAG, "No OTP detected in message from sender=${message.sender}")
+                Timber.d("SmsReceiver: no OTP detected from sender=%s", message.sender)
             }
         }
     }

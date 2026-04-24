@@ -123,6 +123,7 @@ argon2-jvm = { group = "de.mkammerer", name = "argon2-jvm", version.ref = "argon
 
 # WorkManager
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+androidx-work-testing     = { group = "androidx.work", name = "work-testing",     version.ref = "workManager" }
 
 # Biometric
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }

@@ -39,8 +39,8 @@ sealed interface SettingsIntent {
 // ── Side effects ──────────────────────────────────────────────────────────────
 
 sealed interface SettingsSideEffect {
-    data object GoBack                      : SettingsSideEffect
-    data object LaunchExportFilePicker      : SettingsSideEffect
-    data object LaunchImportFilePicker      : SettingsSideEffect
-    data class  ShowSnackbar(val message: String) : SettingsSideEffect
+    data object GoBack                           : SettingsSideEffect
+    data object LaunchExportFilePicker           : SettingsSideEffect
+    data object LaunchImportFilePicker           : SettingsSideEffect
+    data class  ShowSnackbar(val message: String): SettingsSideEffect
 }

@@ -18,6 +18,7 @@ interface ForwardingRepository {
     /**
      * Record a detected OTP immediately when it is observed from the SMS
      * broadcast path so the app can react even on a cold start.
+     * Non-suspending so it can be called directly from [BroadcastReceiver.onReceive].
      */
     fun recordDetectedOtp(event: OtpEvent)
 
@@ -30,9 +31,15 @@ interface ForwardingRepository {
     /** Aggregated counts for today's activity (forwarded / failed / pending). */
     fun todayStats(): Flow<TodayStats>
 
-    /** Persist a new record (initial status is typically [ForwardingStatus.PENDING]). */
+    /**
+     * Persist a new [ForwardingRecord] (initial status is typically
+     * [ForwardingStatus.PENDING]).
+     */
     suspend fun addRecord(record: ForwardingRecord)
 
-    /** Update the status (and optionally an error message) for an existing record. */
-    suspend fun updateStatus(id: String, status: ForwardingStatus, error: String? = null)
+    /**
+     * Update the [ForwardingStatus] of an existing record identified by [id].
+     * [error] is stored only when [status] is [ForwardingStatus.FAILED].
+     */
+    suspend fun updateStatus(id: String, status: ForwardingStatus, error: String?)
 }

@@ -1,11 +1,14 @@
 package com.samsung.android.otpforwarder.core.model
 
 /**
- * Persisted app-wide preferences (stored in EncryptedDataStore).
+ * Persisted app-wide preferences (stored in EncryptedDataStore in M5;
+ * in-memory for M1–M4).
  *
- * @param isForwardingEnabled    Master switch — when false no SMS is forwarded regardless of rules.
- * @param forwardingDelaySeconds Delay before forwarding (0 = immediate). Max 30s.
- * @param defaultDestinations    Destinations used when no matching rule exists.
+ * @param isForwardingEnabled    Master switch — when false no SMS is forwarded.
+ * @param forwardingDelaySeconds Delay before forwarding (0 = immediate, max 30s).
+ * @param defaultDestinations    Channels used when no specific rule matches.
+ * @param defaultPhoneNumber     Phone number for SMS forwarding (E.164 recommended).
+ * @param defaultEmailAddress    Email address for email forwarding.
  * @param isBiometricLockEnabled Whether the app requires biometric / PIN to open.
  * @param notificationsEnabled   Whether to show a notification on each forwarding event.
  * @param isFirstLaunch          Cleared after onboarding completes.

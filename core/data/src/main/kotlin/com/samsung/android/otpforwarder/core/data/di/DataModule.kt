@@ -37,12 +37,14 @@ object DataProvideModule {
 
     /**
      * Application-scoped [CoroutineScope] for work that must outlive ViewModels
-     * (e.g. collecting from [com.samsung.android.otpforwarder.core.sms.SmsEventBus]).
-     * Uses [SupervisorJob] so a failing child doesn't cancel siblings.
+     * (e.g. collecting from [com.samsung.android.otpforwarder.core.sms.SmsEventBus]
+     * to trigger forwarding, or writing to repositories from background services).
+     *
+     * Uses [SupervisorJob] so that a child failure does not cancel sibling collectors.
      */
     @Provides
     @Singleton
     @ApplicationScope
-    fun provideApplicationCoroutineScope(): CoroutineScope =
+    fun provideApplicationScope(): CoroutineScope =
         CoroutineScope(SupervisorJob())
 }

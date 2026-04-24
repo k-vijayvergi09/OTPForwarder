@@ -1,7 +1,6 @@
 package com.samsung.android.otpforwarder.feature.settings
 
 import androidx.lifecycle.ViewModel
-import com.samsung.android.otpforwarder.core.model.AppSettings
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -14,9 +13,8 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
 ) : ViewModel(), ContainerHost<SettingsState, SettingsSideEffect> {
 
-    override val container = container<SettingsState, SettingsSideEffect>(
-        SettingsState()
-    ) {
+    override val container = container<SettingsState, SettingsSideEffect>(SettingsState()) {
+        // Observe persisted settings and keep UI state in sync.
         intent {
             settingsRepository.settings.collectLatest { appSettings ->
                 reduce {
@@ -36,12 +34,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onIntent(intent: SettingsIntent) = when (intent) {
+
         SettingsIntent.ToggleForwarding -> intent {
             settingsRepository.updateSettings { it.copy(isForwardingEnabled = !it.isForwardingEnabled) }
         }
 
         is SettingsIntent.SetForwardingDelay -> intent {
-            settingsRepository.updateSettings { it.copy(forwardingDelaySeconds = intent.seconds.coerceIn(0, 30)) }
+            settingsRepository.updateSettings {
+                it.copy(forwardingDelaySeconds = intent.seconds.coerceIn(0, 30))
+            }
         }
 
         is SettingsIntent.ToggleDestination -> intent {
@@ -64,6 +65,8 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.updateSettings { it.copy(notificationsEnabled = !it.notificationsEnabled) }
         }
 
+        // ── Destination dialogs ───────────────────────────────────────────────
+
         SettingsIntent.ShowPhoneNumberDialog -> intent {
             reduce { state.copy(showPhoneNumberDialog = true) }
         }
@@ -73,8 +76,9 @@ class SettingsViewModel @Inject constructor(
         }
 
         is SettingsIntent.SavePhoneNumber -> intent {
+            settingsRepository.updateSettings { it.copy(defaultPhoneNumber = intent.number.trim()) }
             reduce { state.copy(showPhoneNumberDialog = false) }
-            settingsRepository.updateSettings { it.copy(defaultPhoneNumber = intent.number) }
+            postSideEffect(SettingsSideEffect.ShowSnackbar("SMS destination saved"))
         }
 
         SettingsIntent.ShowEmailDialog -> intent {
@@ -86,9 +90,12 @@ class SettingsViewModel @Inject constructor(
         }
 
         is SettingsIntent.SaveEmail -> intent {
+            settingsRepository.updateSettings { it.copy(defaultEmailAddress = intent.email.trim()) }
             reduce { state.copy(showEmailDialog = false) }
-            settingsRepository.updateSettings { it.copy(defaultEmailAddress = intent.email) }
+            postSideEffect(SettingsSideEffect.ShowSnackbar("Email destination saved"))
         }
+
+        // ── Data management ───────────────────────────────────────────────────
 
         SettingsIntent.ExportConfig -> intent {
             postSideEffect(SettingsSideEffect.LaunchExportFilePicker)
@@ -97,6 +104,8 @@ class SettingsViewModel @Inject constructor(
         SettingsIntent.ImportConfig -> intent {
             postSideEffect(SettingsSideEffect.LaunchImportFilePicker)
         }
+
+        // ── Navigation ────────────────────────────────────────────────────────
 
         SettingsIntent.NavigateBack -> intent {
             postSideEffect(SettingsSideEffect.GoBack)

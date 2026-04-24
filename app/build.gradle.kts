@@ -15,7 +15,8 @@ android {
         applicationId = "com.samsung.android.otpforwarder"
         versionCode = 1
         versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Custom runner required for @HiltAndroidTest — swaps in HiltTestApplication.
+        testInstrumentationRunner = "com.samsung.android.otpforwarder.HiltTestRunner"
     }
 
     buildFeatures {
@@ -76,9 +77,25 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.leakcanary)
 
+    // ── Unit tests ────────────────────────────────────────────────────────────
     testImplementation(libs.junit4)
+    testImplementation(libs.kotlinx.coroutines.test)
+
+    // ── Instrumentation tests ─────────────────────────────────────────────────
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
+    // Hilt testing — @HiltAndroidTest, HiltAndroidRule, @TestInstallIn
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
+    kspAndroidTest(libs.hilt.ext.compiler)
+
+    // WorkManager testing — TestListenableWorkerBuilder, WorkManagerTestInitializer
+    androidTestImplementation(libs.androidx.work.testing)
+
+    // Coroutine + Flow testing
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.turbine)
 }
