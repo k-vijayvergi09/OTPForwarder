@@ -20,6 +20,10 @@ class SettingsViewModel @Inject constructor(
             isForwardingEnabled    = defaults.isForwardingEnabled,
             forwardingDelaySeconds = defaults.forwardingDelaySeconds,
             defaultDestinations    = defaults.defaultDestinations.toSet(),
+            defaultPhoneNumber     = defaults.defaultPhoneNumber,
+            defaultEmailAddress    = defaults.defaultEmailAddress,
+            showPhoneNumberDialog  = false,
+            showEmailDialog        = false,
             isBiometricLockEnabled = defaults.isBiometricLockEnabled,
             notificationsEnabled   = defaults.notificationsEnabled,
             isLoading              = false,
@@ -54,6 +58,30 @@ class SettingsViewModel @Inject constructor(
 
         SettingsIntent.ToggleNotifications -> intent {
             reduce { state.copy(notificationsEnabled = !state.notificationsEnabled) }
+        }
+
+        SettingsIntent.ShowPhoneNumberDialog -> intent {
+            reduce { state.copy(showPhoneNumberDialog = true) }
+        }
+
+        SettingsIntent.HidePhoneNumberDialog -> intent {
+            reduce { state.copy(showPhoneNumberDialog = false) }
+        }
+
+        is SettingsIntent.SavePhoneNumber -> intent {
+            reduce { state.copy(defaultPhoneNumber = intent.number, showPhoneNumberDialog = false) }
+        }
+
+        SettingsIntent.ShowEmailDialog -> intent {
+            reduce { state.copy(showEmailDialog = true) }
+        }
+
+        SettingsIntent.HideEmailDialog -> intent {
+            reduce { state.copy(showEmailDialog = false) }
+        }
+
+        is SettingsIntent.SaveEmail -> intent {
+            reduce { state.copy(defaultEmailAddress = intent.email, showEmailDialog = false) }
         }
 
         SettingsIntent.ExportConfig -> intent {

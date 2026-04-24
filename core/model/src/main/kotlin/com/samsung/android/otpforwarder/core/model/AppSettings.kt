@@ -14,6 +14,8 @@ data class AppSettings(
     val isForwardingEnabled: Boolean = true,
     val forwardingDelaySeconds: Int = 0,
     val defaultDestinations: List<DestinationType> = listOf(DestinationType.EMAIL),
+    val defaultPhoneNumber: String = "",
+    val defaultEmailAddress: String = "",
     val isBiometricLockEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
     val isFirstLaunch: Boolean = true,

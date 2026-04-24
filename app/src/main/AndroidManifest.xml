@@ -47,14 +47,17 @@
 
         <!--
             SmsReceiver — listens for incoming SMS.
-            android:exported="true" is required for system-broadcast receivers.
-            priority="999" gives us the highest possible precedence among apps
-            listening for SMS_RECEIVED (max allowed is 1000, reserved for system).
+            android:exported="true" is required; the system telephony stack sends
+            SMS_RECEIVED as an ordered broadcast to all registered receivers.
+            We intentionally omit android:permission="BROADCAST_SMS" because on
+            Samsung One UI (and several other OEMs) the telephony process does not
+            hold BROADCAST_SMS when dispatching SMS_RECEIVED, which silently drops
+            the broadcast. The system already restricts receipt to apps that hold
+            the RECEIVE_SMS runtime permission, so no extra guard is needed here.
         -->
         <receiver
             android:name="com.samsung.android.otpforwarder.core.sms.SmsReceiver"
-            android:exported="true"
-            android:permission="android.permission.BROADCAST_SMS">
+            android:exported="true">
             <intent-filter android:priority="999">
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>

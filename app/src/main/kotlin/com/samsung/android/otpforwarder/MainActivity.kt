@@ -1,6 +1,7 @@
 package com.samsung.android.otpforwarder
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -34,6 +36,8 @@ import com.samsung.android.otpforwarder.navigation.OtpNavGraph
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+private const val TAG = "OtpForwarderMain"
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -42,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i(TAG, "MainActivity.onCreate")
         enableEdgeToEdge()
         setContent {
             OtpForwarderTheme {
@@ -53,29 +58,45 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun OtpForwarderApp(incomingSmsMonitor: IncomingSmsMonitor) {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-    val snackbarHostState = remember { SnackbarHostState() }
-    var lastHandledSequence by remember { androidx.compose.runtime.mutableStateOf(0L) }
+    val navController       = rememberNavController()
+    val navBackStackEntry   by navController.currentBackStackEntryAsState()
+    val currentDestination  = navBackStackEntry?.destination
+    val snackbarHostState   = remember { SnackbarHostState() }
+    var lastHandledSequence by remember { mutableStateOf(0L) }
 
-    // Bottom bar is hidden on Onboarding and Settings (full-screen flows)
     val bottomBarRoutes = BottomNavTab.entries.map { it.destination.route }.toSet()
-    val showBottomBar = currentDestination?.route in bottomBarRoutes
+    val showBottomBar   = currentDestination?.route in bottomBarRoutes
 
+    // Collect raw-SMS observations from the broadcast receiver and surface them
+    // as a brief snackbar so the developer can verify the pipeline end-to-end.
     LaunchedEffect(incomingSmsMonitor) {
+        Log.i(TAG, "Starting IncomingSmsMonitor collection")
         incomingSmsMonitor.latestObservation.collect { observation ->
-            if (observation == null || observation.sequence <= lastHandledSequence) return@collect
+            if (observation == null) {
+                Log.i(TAG, "Observation is null, waiting for SMS")
+                return@collect
+            }
+            Log.i(
+                TAG,
+                "Observed sequence=${observation.sequence} sender=${observation.message.sender} " +
+                "lastHandled=$lastHandledSequence",
+            )
+            if (observation.sequence <= lastHandledSequence) {
+                Log.i(TAG, "Skipping already handled sequence=${observation.sequence}")
+                return@collect
+            }
             lastHandledSequence = observation.sequence
+            Log.i(TAG, "Showing snackbar for sender=${observation.message.sender}")
             snackbarHostState.showSnackbar(
                 message = "Incoming SMS from ${observation.message.sender.ifBlank { "Unknown sender" }}",
             )
+            Log.i(TAG, "Snackbar finished for sequence=${observation.sequence}")
         }
     }
 
     Scaffold(
-        modifier        = Modifier.fillMaxSize(),
-        snackbarHost    = { SnackbarHost(hostState = snackbarHostState) },
+        modifier     = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
@@ -90,9 +111,8 @@ private fun OtpForwarderApp(incomingSmsMonitor: IncomingSmsMonitor) {
 
                         NavigationBarItem(
                             selected = selected,
-                            onClick = {
+                            onClick  = {
                                 navController.navigate(tab.destination.route) {
-                                    // Pop up to start destination to avoid building a large back stack
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }

@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -13,15 +14,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Posts a lightweight notification whenever the app observes an incoming SMS.
- */
 @Singleton
 class IncomingSmsNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
 
     fun notifyIncomingMessage(sender: String, preview: String) {
+        Log.i(TAG, "notifyIncomingMessage sender=${sender.ifBlank { "Unknown sender" }}")
         ensureChannel()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -29,7 +28,11 @@ class IncomingSmsNotifier @Inject constructor(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS,
             ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) return
+            Log.i(TAG, "POST_NOTIFICATIONS granted=$granted")
+            if (!granted) {
+                Log.i(TAG, "Skipping notification because permission is missing")
+                return
+            }
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -42,14 +45,21 @@ class IncomingSmsNotifier @Inject constructor(
             .build()
 
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        Log.i(TAG, "Notification posted channel=$CHANNEL_ID id=$NOTIFICATION_ID")
     }
 
     private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            Log.i(TAG, "Notification channel not required on this Android version")
+            return
+        }
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val existing = manager.getNotificationChannel(CHANNEL_ID)
-        if (existing != null) return
+        if (existing != null) {
+            Log.i(TAG, "Notification channel already exists: $CHANNEL_ID")
+            return
+        }
 
         manager.createNotificationChannel(
             NotificationChannel(
@@ -60,9 +70,11 @@ class IncomingSmsNotifier @Inject constructor(
                 description = "Alerts when OTP Forwarder observes a new SMS"
             },
         )
+        Log.i(TAG, "Created notification channel: $CHANNEL_ID")
     }
 
     private companion object {
+        const val TAG = "OtpForwarderNotify"
         const val CHANNEL_ID = "incoming_sms"
         const val NOTIFICATION_ID = 2001
     }

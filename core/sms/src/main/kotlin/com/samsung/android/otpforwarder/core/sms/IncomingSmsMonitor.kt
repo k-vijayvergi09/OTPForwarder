@@ -1,5 +1,6 @@
 package com.samsung.android.otpforwarder.core.sms
 
+import android.util.Log
 import com.samsung.android.otpforwarder.core.model.SmsMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,10 +13,6 @@ data class IncomingSmsObservation(
     val message: SmsMessage,
 )
 
-/**
- * Retains the latest observed incoming SMS so foreground UI can react even if
- * the receiver emits before the activity collector is actively listening.
- */
 @Singleton
 class IncomingSmsMonitor @Inject constructor() {
 
@@ -24,9 +21,14 @@ class IncomingSmsMonitor @Inject constructor() {
 
     fun record(message: SmsMessage) {
         val nextSequence = (_latestObservation.value?.sequence ?: 0L) + 1L
+        Log.i(TAG, "Recording SMS sequence=$nextSequence sender=${message.sender}")
         _latestObservation.value = IncomingSmsObservation(
             sequence = nextSequence,
             message = message,
         )
+    }
+
+    private companion object {
+        const val TAG = "OtpForwarderMonitor"
     }
 }
