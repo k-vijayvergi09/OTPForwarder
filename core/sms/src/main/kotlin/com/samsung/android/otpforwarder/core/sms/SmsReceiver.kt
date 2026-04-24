@@ -8,6 +8,9 @@ import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.samsung.android.otpforwarder.core.domain.DetectOtpUseCase
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -96,6 +99,13 @@ class SmsReceiver : BroadcastReceiver() {
                 if (!emitted) {
                     Timber.w("SmsReceiver: eventBus buffer full — OTP event dropped id=%s", otpEvent.id)
                 }
+
+                // Enqueue the ForwardingWorker to handle SMS dispatch
+                val workRequest = OneTimeWorkRequestBuilder<ForwardingWorker>()
+                    .setInputData(workDataOf(ForwardingWorker.KEY_EVENT_ID to otpEvent.id))
+                    .build()
+                WorkManager.getInstance(context).enqueue(workRequest)
+                Log.i(TAG, "Enqueued ForwardingWorker for event id=${otpEvent.id}")
             } else {
                 Log.i(TAG, "No OTP detected in SMS from sender=${message.sender}")
                 Timber.d("SmsReceiver: no OTP in message from sender=%s", message.sender)

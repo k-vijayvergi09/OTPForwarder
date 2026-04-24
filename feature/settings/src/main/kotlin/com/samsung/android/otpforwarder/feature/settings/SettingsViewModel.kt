@@ -2,62 +2,66 @@ package com.samsung.android.otpforwarder.feature.settings
 
 import androidx.lifecycle.ViewModel
 import com.samsung.android.otpforwarder.core.model.AppSettings
+import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collectLatest
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    // SettingsRepository will be injected here in M5 when EncryptedDataStore is wired up.
-    // For now the ViewModel manages in-memory state seeded from AppSettings defaults.
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel(), ContainerHost<SettingsState, SettingsSideEffect> {
 
-    private val defaults = AppSettings()
-
     override val container = container<SettingsState, SettingsSideEffect>(
-        SettingsState(
-            isForwardingEnabled    = defaults.isForwardingEnabled,
-            forwardingDelaySeconds = defaults.forwardingDelaySeconds,
-            defaultDestinations    = defaults.defaultDestinations.toSet(),
-            defaultPhoneNumber     = defaults.defaultPhoneNumber,
-            defaultEmailAddress    = defaults.defaultEmailAddress,
-            showPhoneNumberDialog  = false,
-            showEmailDialog        = false,
-            isBiometricLockEnabled = defaults.isBiometricLockEnabled,
-            notificationsEnabled   = defaults.notificationsEnabled,
-            isLoading              = false,
-        )
-    )
+        SettingsState()
+    ) {
+        intent {
+            settingsRepository.settings.collectLatest { appSettings ->
+                reduce {
+                    state.copy(
+                        isForwardingEnabled    = appSettings.isForwardingEnabled,
+                        forwardingDelaySeconds = appSettings.forwardingDelaySeconds,
+                        defaultDestinations    = appSettings.defaultDestinations.toSet(),
+                        defaultPhoneNumber     = appSettings.defaultPhoneNumber,
+                        defaultEmailAddress    = appSettings.defaultEmailAddress,
+                        isBiometricLockEnabled = appSettings.isBiometricLockEnabled,
+                        notificationsEnabled   = appSettings.notificationsEnabled,
+                        isLoading              = false,
+                    )
+                }
+            }
+        }
+    }
 
     fun onIntent(intent: SettingsIntent) = when (intent) {
         SettingsIntent.ToggleForwarding -> intent {
-            reduce { state.copy(isForwardingEnabled = !state.isForwardingEnabled) }
+            settingsRepository.updateSettings { it.copy(isForwardingEnabled = !it.isForwardingEnabled) }
         }
 
         is SettingsIntent.SetForwardingDelay -> intent {
-            reduce { state.copy(forwardingDelaySeconds = intent.seconds.coerceIn(0, 30)) }
+            settingsRepository.updateSettings { it.copy(forwardingDelaySeconds = intent.seconds.coerceIn(0, 30)) }
         }
 
         is SettingsIntent.ToggleDestination -> intent {
-            reduce {
-                val current = state.defaultDestinations.toMutableSet()
+            settingsRepository.updateSettings { settings ->
+                val current = settings.defaultDestinations.toMutableList()
                 if (intent.type in current) {
-                    // Always keep at least one destination selected
                     if (current.size > 1) current.remove(intent.type)
                 } else {
                     current.add(intent.type)
                 }
-                state.copy(defaultDestinations = current)
+                settings.copy(defaultDestinations = current)
             }
         }
 
         SettingsIntent.ToggleBiometricLock -> intent {
-            reduce { state.copy(isBiometricLockEnabled = !state.isBiometricLockEnabled) }
+            settingsRepository.updateSettings { it.copy(isBiometricLockEnabled = !it.isBiometricLockEnabled) }
         }
 
         SettingsIntent.ToggleNotifications -> intent {
-            reduce { state.copy(notificationsEnabled = !state.notificationsEnabled) }
+            settingsRepository.updateSettings { it.copy(notificationsEnabled = !it.notificationsEnabled) }
         }
 
         SettingsIntent.ShowPhoneNumberDialog -> intent {
@@ -69,7 +73,8 @@ class SettingsViewModel @Inject constructor(
         }
 
         is SettingsIntent.SavePhoneNumber -> intent {
-            reduce { state.copy(defaultPhoneNumber = intent.number, showPhoneNumberDialog = false) }
+            reduce { state.copy(showPhoneNumberDialog = false) }
+            settingsRepository.updateSettings { it.copy(defaultPhoneNumber = intent.number) }
         }
 
         SettingsIntent.ShowEmailDialog -> intent {
@@ -81,7 +86,8 @@ class SettingsViewModel @Inject constructor(
         }
 
         is SettingsIntent.SaveEmail -> intent {
-            reduce { state.copy(defaultEmailAddress = intent.email, showEmailDialog = false) }
+            reduce { state.copy(showEmailDialog = false) }
+            settingsRepository.updateSettings { it.copy(defaultEmailAddress = intent.email) }
         }
 
         SettingsIntent.ExportConfig -> intent {
