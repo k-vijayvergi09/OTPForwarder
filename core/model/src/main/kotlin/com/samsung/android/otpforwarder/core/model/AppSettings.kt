@@ -16,7 +16,7 @@ package com.samsung.android.otpforwarder.core.model
 data class AppSettings(
     val isForwardingEnabled: Boolean = true,
     val forwardingDelaySeconds: Int = 0,
-    val defaultDestinations: List<DestinationType> = listOf(DestinationType.EMAIL),
+    val defaultDestinations: List<DestinationType> = listOf(DestinationType.SMS),
     val defaultPhoneNumber: String = "",
     val defaultEmailAddress: String = "",
     val isBiometricLockEnabled: Boolean = false,

@@ -109,6 +109,11 @@ internal fun SettingsContent(
                         onToggle = { onIntent(SettingsIntent.ToggleForwarding) },
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                    DestinationRow(
+                        selectedDestinations = state.defaultDestinations,
+                        onToggle             = { onIntent(SettingsIntent.ToggleDestination(it)) },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
                     ActionRow(
                         icon     = Icons.Rounded.Sms,
                         title    = "Default SMS destination",

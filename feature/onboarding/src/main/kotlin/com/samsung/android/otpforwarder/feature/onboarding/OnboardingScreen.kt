@@ -84,7 +84,11 @@ fun OnboardingScreen(
         when (effect) {
             OnboardingSideEffect.LaunchSmsPermission -> {
                 smsLauncher.launch(
-                    arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)
+                    arrayOf(
+                        Manifest.permission.RECEIVE_SMS,
+                        Manifest.permission.READ_SMS,
+                        Manifest.permission.SEND_SMS,
+                    )
                 )
             }
             OnboardingSideEffect.LaunchNotificationPermission -> {
