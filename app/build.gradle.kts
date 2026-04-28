@@ -97,5 +97,6 @@ dependencies {
 
     // Coroutine + Flow testing
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.kotlinx.datetime)
     androidTestImplementation(libs.turbine)
 }

@@ -29,11 +29,13 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.samsung.android.otpforwarder.core.designsystem.theme.OtpForwarderTheme
+import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import com.samsung.android.otpforwarder.core.sms.IncomingSmsMonitor
 import com.samsung.android.otpforwarder.navigation.AppDestination
 import com.samsung.android.otpforwarder.navigation.BottomNavTab
 import com.samsung.android.otpforwarder.navigation.OtpNavGraph
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 private const val TAG = "OtpForwarderMain"
@@ -41,8 +43,8 @@ private const val TAG = "OtpForwarderMain"
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var incomingSmsMonitor: IncomingSmsMonitor
+    @Inject lateinit var incomingSmsMonitor: IncomingSmsMonitor
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,25 +52,47 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             OtpForwarderTheme {
-                OtpForwarderApp(incomingSmsMonitor = incomingSmsMonitor)
+                OtpForwarderApp(
+                    incomingSmsMonitor = incomingSmsMonitor,
+                    settingsRepository = settingsRepository,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun OtpForwarderApp(incomingSmsMonitor: IncomingSmsMonitor) {
-    val navController       = rememberNavController()
-    val navBackStackEntry   by navController.currentBackStackEntryAsState()
-    val currentDestination  = navBackStackEntry?.destination
-    val snackbarHostState   = remember { SnackbarHostState() }
+private fun OtpForwarderApp(
+    incomingSmsMonitor: IncomingSmsMonitor,
+    settingsRepository: SettingsRepository,
+) {
+    // null = still reading from DataStore; String = route to launch
+    var startDestination by remember { mutableStateOf<String?>(null) }
+
+    // Read isFirstLaunch exactly once on first composition.
+    // DataStore resolves from local disk in < 100 ms, so the blank frame is imperceptible.
+    LaunchedEffect(Unit) {
+        val settings = settingsRepository.settings.first()
+        startDestination = if (settings.isFirstLaunch) {
+            AppDestination.Onboarding.route
+        } else {
+            AppDestination.Home.route
+        }
+    }
+
+    // Hold off composing NavHost until we know the start destination.
+    if (startDestination == null) return
+
+    val navController      = rememberNavController()
+    val navBackStackEntry  by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+    val snackbarHostState  = remember { SnackbarHostState() }
     var lastHandledSequence by remember { mutableStateOf(0L) }
 
     val bottomBarRoutes = BottomNavTab.entries.map { it.destination.route }.toSet()
     val showBottomBar   = currentDestination?.route in bottomBarRoutes
 
-    // Collect raw-SMS observations from the broadcast receiver and surface them
-    // as a brief snackbar so the developer can verify the pipeline end-to-end.
+    // Surface incoming-SMS observations as a brief snackbar for end-to-end verification.
     LaunchedEffect(incomingSmsMonitor) {
         Log.i(TAG, "Starting IncomingSmsMonitor collection")
         incomingSmsMonitor.latestObservation.collect { observation ->
@@ -79,7 +103,7 @@ private fun OtpForwarderApp(incomingSmsMonitor: IncomingSmsMonitor) {
             Log.i(
                 TAG,
                 "Observed sequence=${observation.sequence} sender=${observation.message.sender} " +
-                "lastHandled=$lastHandledSequence",
+                    "lastHandled=$lastHandledSequence",
             )
             if (observation.sequence <= lastHandledSequence) {
                 Log.i(TAG, "Skipping already handled sequence=${observation.sequence}")
@@ -130,8 +154,7 @@ private fun OtpForwarderApp(incomingSmsMonitor: IncomingSmsMonitor) {
     ) { innerPadding ->
         OtpNavGraph(
             navController    = navController,
-            // TODO M5: read isFirstLaunch from DataStore; for now always start at Home
-            startDestination = AppDestination.Home.route,
+            startDestination = startDestination!!,
             modifier         = Modifier.padding(innerPadding),
         )
     }

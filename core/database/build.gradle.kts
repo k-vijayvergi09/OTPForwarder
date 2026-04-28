@@ -11,6 +11,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    implementation(project(":core:domain"))
 
     implementation(libs.androidx.room.paging)
     implementation(libs.kotlinx.coroutines.android)

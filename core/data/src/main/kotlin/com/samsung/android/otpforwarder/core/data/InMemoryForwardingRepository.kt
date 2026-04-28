@@ -1,6 +1,7 @@
 package com.samsung.android.otpforwarder.core.data
 
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
+import com.samsung.android.otpforwarder.core.model.DestinationType
 import com.samsung.android.otpforwarder.core.model.ForwardingRecord
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
 import com.samsung.android.otpforwarder.core.model.OtpEvent
@@ -78,6 +79,21 @@ class InMemoryForwardingRepository @Inject constructor() : ForwardingRepository 
                     record.copy(
                         status       = status,
                         errorMessage = error,
+                        updatedAt    = Clock.System.now(),
+                    )
+                } else {
+                    record
+                }
+            }
+        }
+    }
+
+    override suspend fun updateDestinations(id: String, destinations: List<DestinationType>) {
+        _records.update { current ->
+            current.map { record ->
+                if (record.id == id) {
+                    record.copy(
+                        destinations = destinations,
                         updatedAt    = Clock.System.now(),
                     )
                 } else {

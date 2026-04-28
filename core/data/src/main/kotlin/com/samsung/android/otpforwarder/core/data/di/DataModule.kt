@@ -1,8 +1,8 @@
 package com.samsung.android.otpforwarder.core.data.di
 
 import com.samsung.android.otpforwarder.core.common.coroutines.ApplicationScope
-import com.samsung.android.otpforwarder.core.data.InMemoryForwardingRepository
-import com.samsung.android.otpforwarder.core.data.InMemorySettingsRepository
+import com.samsung.android.otpforwarder.core.database.RoomForwardingRepository
+import com.samsung.android.otpforwarder.core.datastore.DataStoreSettingsRepository
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import dagger.Binds
@@ -21,13 +21,13 @@ abstract class DataBindModule {
     @Binds
     @Singleton
     abstract fun bindForwardingRepository(
-        impl: InMemoryForwardingRepository,
+        impl: RoomForwardingRepository,
     ): ForwardingRepository
 
     @Binds
     @Singleton
     abstract fun bindSettingsRepository(
-        impl: InMemorySettingsRepository,
+        impl: DataStoreSettingsRepository,
     ): SettingsRepository
 }
 

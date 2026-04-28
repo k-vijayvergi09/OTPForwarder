@@ -54,6 +54,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.samsung.android.otpforwarder.core.common.validation.PhoneNumberValidator
 import com.samsung.android.otpforwarder.core.designsystem.theme.OtpForwarderTheme
 import com.samsung.android.otpforwarder.core.model.DestinationType
 import org.orbitmvi.orbit.compose.collectAsState
@@ -190,6 +191,7 @@ internal fun SettingsContent(
             placeholder  = "+91 98765 43210",
             initialValue = state.defaultPhoneNumber,
             keyboardType = KeyboardType.Phone,
+            validate     = PhoneNumberValidator::errorOrNull,
             onDismiss    = { onIntent(SettingsIntent.HidePhoneNumberDialog) },
             onSave       = { onIntent(SettingsIntent.SavePhoneNumber(it)) },
         )
@@ -452,8 +454,15 @@ private fun EditValueDialog(
     keyboardType: KeyboardType,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
+    /** Optional validator: returns an error message or null if the value is valid. */
+    validate: ((String) -> String?)? = null,
 ) {
     var value by remember(initialValue) { mutableStateOf(initialValue) }
+    // Only show errors after the user has started typing (avoid alarming the user on open).
+    var dirty by remember { mutableStateOf(false) }
+
+    val error: String? = if (dirty && validate != null) validate(value) else null
+    val canSave = value.isNotBlank() && error == null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -466,23 +475,31 @@ private fun EditValueDialog(
         text = {
             OutlinedTextField(
                 value         = value,
-                onValueChange = { value = it },
+                onValueChange = {
+                    value = it
+                    dirty = true
+                },
                 label         = { Text(label) },
                 placeholder   = { Text(placeholder) },
                 singleLine    = true,
+                isError       = error != null,
+                supportingText = error?.let { msg ->
+                    { Text(text = msg, color = MaterialTheme.colorScheme.error) }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 modifier      = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
             TextButton(
-                onClick  = { onSave(value) },
-                enabled  = value.isNotBlank(),
+                onClick  = { if (canSave) onSave(value) },
+                enabled  = canSave,
             ) {
                 Text(
                     text  = "Save",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (canSave) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
             }
         },

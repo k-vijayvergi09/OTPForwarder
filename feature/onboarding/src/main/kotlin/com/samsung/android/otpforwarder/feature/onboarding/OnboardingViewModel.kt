@@ -1,14 +1,16 @@
 package com.samsung.android.otpforwarder.feature.onboarding
 
 import androidx.lifecycle.ViewModel
+import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.orbitmvi.orbit.ContainerHost
 import org.orbitmvi.orbit.viewmodel.container
 import javax.inject.Inject
 
 @HiltViewModel
-class OnboardingViewModel @Inject constructor() :
-    ViewModel(), ContainerHost<OnboardingState, OnboardingSideEffect> {
+class OnboardingViewModel @Inject constructor(
+    private val settingsRepository: SettingsRepository,
+) : ViewModel(), ContainerHost<OnboardingState, OnboardingSideEffect> {
 
     override val container = container<OnboardingState, OnboardingSideEffect>(OnboardingState())
 
@@ -57,6 +59,8 @@ class OnboardingViewModel @Inject constructor() :
         }
 
         OnboardingIntent.Finish -> intent {
+            // Persist the flag so the app launches directly to Home on subsequent starts.
+            settingsRepository.updateSettings { it.copy(isFirstLaunch = false) }
             postSideEffect(OnboardingSideEffect.NavigateToHome)
         }
     }

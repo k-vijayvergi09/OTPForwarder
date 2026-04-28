@@ -1,5 +1,6 @@
 package com.samsung.android.otpforwarder.core.domain
 
+import com.samsung.android.otpforwarder.core.model.DestinationType
 import com.samsung.android.otpforwarder.core.model.ForwardingRecord
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
 import com.samsung.android.otpforwarder.core.model.OtpEvent
@@ -42,4 +43,11 @@ interface ForwardingRepository {
      * [error] is stored only when [status] is [ForwardingStatus.FAILED].
      */
     suspend fun updateStatus(id: String, status: ForwardingStatus, error: String?)
+
+    /**
+     * Record which [DestinationType] channels the OTP was successfully delivered
+     * through.  Called after a successful forwarding attempt so the Logs / Home
+     * screens can show "Forwarded · SMS" or "Forwarded · SMS + Email".
+     */
+    suspend fun updateDestinations(id: String, destinations: List<DestinationType>)
 }

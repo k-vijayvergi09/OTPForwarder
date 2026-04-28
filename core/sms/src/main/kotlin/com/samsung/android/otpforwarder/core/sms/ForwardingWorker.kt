@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.samsung.android.otpforwarder.core.common.validation.PhoneNumberValidator
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import com.samsung.android.otpforwarder.core.model.DestinationType
@@ -20,6 +21,7 @@ class ForwardingWorker @AssistedInject constructor(
     private val forwardingRepository: ForwardingRepository,
     private val settingsRepository: SettingsRepository,
     private val smsSender: SmsSender,
+    private val forwardingNotifier: ForwardingNotifier,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -54,12 +56,22 @@ class ForwardingWorker @AssistedInject constructor(
             forwardingRepository.updateStatus(eventId, ForwardingStatus.FAILED, "No destination number")
             return Result.failure()
         }
+        if (!PhoneNumberValidator.isValid(destinationNumber)) {
+            Timber.w("ForwardingWorker: Destination number failed validation: $destinationNumber")
+            forwardingRepository.updateStatus(eventId, ForwardingStatus.FAILED, "Invalid destination number")
+            return Result.failure()
+        }
 
         val messageBody = "FWD from \${record.sender}: \${record.fullBody}"
         val success = smsSender.sendSms(destinationNumber, messageBody)
 
         return if (success) {
+            forwardingRepository.updateDestinations(eventId, listOf(DestinationType.SMS))
             forwardingRepository.updateStatus(eventId, ForwardingStatus.FORWARDED, null)
+            forwardingNotifier.notifyForwarded(
+                sender      = record.sender,
+                destination = destinationNumber,
+            )
             Result.success()
         } else {
             forwardingRepository.updateStatus(eventId, ForwardingStatus.FAILED, "SMS dispatch failed")
