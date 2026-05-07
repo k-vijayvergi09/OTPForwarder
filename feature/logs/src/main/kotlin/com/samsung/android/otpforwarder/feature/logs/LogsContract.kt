@@ -9,6 +9,7 @@ data class LogRowUiItem(
     val sender: String,
     /** Last 3 digits visible, e.g. "••• 842". Fully masked when PENDING/FAILED. */
     val maskedOtp: String,
+    val fullBody: String,
     /** Destination summary, e.g. "SMS → +91 98••• • · Email delivered" */
     val deliveryLine: String,
     val status: ForwardingStatus,
@@ -29,15 +30,16 @@ data class LogsState(
     val todayPending: Int = 0,
     val groups: List<LogGroup> = emptyList(),
     val isLoading: Boolean = false,
+    val selectedLog: LogRowUiItem? = null,
 )
 
 sealed interface LogsIntent {
     data object NavigateBack : LogsIntent
     data class OpenDetail(val id: String) : LogsIntent
+    data object CloseDetail : LogsIntent
     data class RetryForwarding(val id: String) : LogsIntent
 }
 
 sealed interface LogsSideEffect {
     data object GoBack : LogsSideEffect
-    data class ShowDetail(val id: String) : LogsSideEffect
 }

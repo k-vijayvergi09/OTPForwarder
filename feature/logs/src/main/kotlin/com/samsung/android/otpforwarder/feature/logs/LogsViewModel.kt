@@ -53,7 +53,11 @@ class LogsViewModel @Inject constructor(
 
     fun onIntent(intent: LogsIntent) = when (intent) {
         LogsIntent.NavigateBack       -> intent { postSideEffect(LogsSideEffect.GoBack) }
-        is LogsIntent.OpenDetail      -> intent { postSideEffect(LogsSideEffect.ShowDetail(intent.id)) }
+        is LogsIntent.OpenDetail      -> intent {
+            val log = state.groups.flatMap { it.items }.find { it.id == intent.id }
+            reduce { state.copy(selectedLog = log) }
+        }
+        LogsIntent.CloseDetail        -> intent { reduce { state.copy(selectedLog = null) } }
         is LogsIntent.RetryForwarding -> intent {
             repository.updateStatus(intent.id, ForwardingStatus.PENDING, null)
             dispatcher.forceRetry(intent.id)
@@ -88,6 +92,7 @@ private fun ForwardingRecord.toLogRowUiItem(): LogRowUiItem = LogRowUiItem(
         ForwardingStatus.FORWARDED -> otpCode.partialMask()
         else                       -> otpCode.fullyMasked()
     },
+    fullBody     = fullBody,
     deliveryLine = buildDeliveryLine(),
     status       = status,
     timeLabel    = receivedAt.toTimeLabel(),

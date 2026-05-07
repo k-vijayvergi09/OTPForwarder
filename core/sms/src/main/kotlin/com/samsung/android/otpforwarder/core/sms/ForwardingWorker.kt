@@ -113,6 +113,7 @@ class ForwardingWorker @AssistedInject constructor(
                 )
                 forwardingNotifier.notifySendFailed(
                     sender         = sender,
+                    eventId        = eventId,
                     attemptNumber  = attemptNumber,
                     maxAttempts    = MAX_ATTEMPTS,
                     willRetry      = false,
@@ -128,6 +129,7 @@ class ForwardingWorker @AssistedInject constructor(
                 )
                 forwardingNotifier.notifySendFailed(
                     sender         = sender,
+                    eventId        = eventId,
                     attemptNumber  = attemptNumber,
                     maxAttempts    = MAX_ATTEMPTS,
                     willRetry      = true,

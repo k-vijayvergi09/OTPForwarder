@@ -50,11 +50,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "MainActivity.onCreate")
         enableEdgeToEdge()
+        val navigateTo = intent?.getStringExtra("EXTRA_NAVIGATE_TO")
+        
         setContent {
             OtpForwarderTheme {
                 OtpForwarderApp(
                     incomingSmsMonitor = incomingSmsMonitor,
                     settingsRepository = settingsRepository,
+                    navigateTo = navigateTo,
                 )
             }
         }
@@ -65,6 +68,7 @@ class MainActivity : ComponentActivity() {
 private fun OtpForwarderApp(
     incomingSmsMonitor: IncomingSmsMonitor,
     settingsRepository: SettingsRepository,
+    navigateTo: String? = null,
 ) {
     // null = still reading from DataStore; String = route to launch
     var startDestination by remember { mutableStateOf<String?>(null) }
@@ -76,7 +80,11 @@ private fun OtpForwarderApp(
         startDestination = if (settings.isFirstLaunch) {
             AppDestination.Onboarding.route
         } else {
-            AppDestination.Home.route
+            if (navigateTo == "logs") {
+                AppDestination.Logs.route
+            } else {
+                AppDestination.Home.route
+            }
         }
     }
 

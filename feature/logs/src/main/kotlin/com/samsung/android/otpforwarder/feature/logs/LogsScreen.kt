@@ -1,6 +1,7 @@
 package com.samsung.android.otpforwarder.feature.logs
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,10 +25,12 @@ import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +78,13 @@ internal fun LogsContent(
     ) {
         LogsTopBar()
 
+        state.selectedLog?.let { log ->
+            LogDetailDialog(
+                log = log,
+                onDismiss = { onIntent(LogsIntent.CloseDetail) }
+            )
+        }
+
         if (state.groups.isEmpty() && !state.isLoading) {
             EmptyLogsState()
         } else {
@@ -110,6 +120,7 @@ internal fun LogsContent(
                     items(group.items, key = { it.id }) { item ->
                         LogRowItem(
                             item     = item,
+                            onIntent = onIntent,
                             onRetry  = { onIntent(LogsIntent.RetryForwarding(it)) },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         )
@@ -195,6 +206,7 @@ private fun TodaySummaryCard(
 @Composable
 private fun LogRowItem(
     item: LogRowUiItem,
+    onIntent: (LogsIntent) -> Unit,
     onRetry: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -216,6 +228,7 @@ private fun LogRowItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable { onIntent(LogsIntent.OpenDetail(item.id)) }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -314,6 +327,69 @@ private fun EmptyLogsState() {
     }
 }
 
+// ── Detail Dialog ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun LogDetailDialog(
+    log: LogRowUiItem,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Message Details",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Sender",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = log.sender,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Time",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = log.timeLabel,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Full Message",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = log.fullBody,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        lineHeight = 24.sp
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
 // ── Preview ───────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, showSystemUi = true)
@@ -329,16 +405,16 @@ private fun LogsPreview() {
                     LogGroup(
                         label = "TODAY",
                         items = listOf(
-                            LogRowUiItem("1", "HDFC Bank", "••• 913", "SMS delivered · Email delivered", ForwardingStatus.FORWARDED,    "2m ago"),
-                            LogRowUiItem("2", "Amazon",    "••• 127", "Email delivered",                ForwardingStatus.FORWARDED,    "18m ago"),
-                            LogRowUiItem("3", "Uber",      "••• ••••", "Retrying",                      ForwardingStatus.RETRY_QUEUED, "42m ago"),
-                            LogRowUiItem("4", "Google",    "••• •••", "SMS send failed",               ForwardingStatus.FAILED,       "1h ago"),
+                            LogRowUiItem("1", "HDFC Bank", "••• 913", "This is the full SMS body from HDFC Bank.", "SMS delivered · Email delivered", ForwardingStatus.FORWARDED,    "2m ago"),
+                            LogRowUiItem("2", "Amazon",    "••• 127", "This is the full SMS body from Amazon.", "Email delivered",                ForwardingStatus.FORWARDED,    "18m ago"),
+                            LogRowUiItem("3", "Uber",      "••• ••••", "This is the full SMS body from Uber.", "Retrying",                      ForwardingStatus.RETRY_QUEUED, "42m ago"),
+                            LogRowUiItem("4", "Google",    "••• •••", "This is the full SMS body from Google.", "SMS send failed",               ForwardingStatus.FAILED,       "1h ago"),
                         ),
                     ),
                     LogGroup(
                         label = "YESTERDAY",
                         items = listOf(
-                            LogRowUiItem("5", "ICICI Bank", "••• 501", "SMS delivered", ForwardingStatus.FORWARDED, "yday 22:14"),
+                            LogRowUiItem("5", "ICICI Bank", "••• 501", "This is the full SMS body from ICICI Bank.", "SMS delivered", ForwardingStatus.FORWARDED, "yday 22:14"),
                         ),
                     ),
                 ),

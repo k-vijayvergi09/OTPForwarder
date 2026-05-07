@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -54,6 +56,7 @@ class ForwardingNotifier @Inject constructor(
             .setContentTitle("OTP forwarded")
             .setContentText("From $sender → $destination")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(getLogsPendingIntent())
             .setAutoCancel(true)
             .build()
 
@@ -82,6 +85,7 @@ class ForwardingNotifier @Inject constructor(
      */
     fun notifySendFailed(
         sender: String,
+        eventId: String,
         attemptNumber: Int,
         maxAttempts: Int,
         willRetry: Boolean,
@@ -104,13 +108,33 @@ class ForwardingNotifier @Inject constructor(
             icon  = android.R.drawable.stat_notify_error
         }
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(icon)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(getLogsPendingIntent())
             .setAutoCancel(true)
-            .build()
+            
+        if (!willRetry) {
+            val retryIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                action = NotificationActionReceiver.ACTION_RETRY_FORWARDING
+                putExtra(NotificationActionReceiver.EXTRA_EVENT_ID, eventId)
+            }
+            val retryPendingIntent = PendingIntent.getBroadcast(
+                context,
+                notificationId, // using notificationId as request code
+                retryIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(
+                android.R.drawable.ic_popup_sync,
+                "Retry Now",
+                retryPendingIntent
+            )
+        }
+
+        val notification = builder.build()
 
         NotificationManagerCompat.from(context).notify(notificationId, notification)
 
@@ -131,6 +155,20 @@ class ForwardingNotifier @Inject constructor(
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private fun getLogsPendingIntent(): PendingIntent {
+        val intent = Intent().apply {
+            setClassName(context, "com.samsung.android.otpforwarder.MainActivity")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("EXTRA_NAVIGATE_TO", "logs")
+        }
+        return PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     private fun isPostNotificationsGranted(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
