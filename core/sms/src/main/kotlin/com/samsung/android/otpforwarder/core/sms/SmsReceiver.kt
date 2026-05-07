@@ -82,20 +82,13 @@ class SmsReceiver : BroadcastReceiver() {
             )
             Log.i(TAG, "Requested notification for sender=${message.sender}")
 
-            // TODO: TESTING BYPASS — every SMS is forwarded regardless of OTP detection.
-            // To restore production behaviour, delete the ?: fallback below so only
-            // messages where detectOtpUseCase returns non-null are forwarded:
-            //   val otpEvent = detectOtpUseCase(message) ?: run { ... return@for }
-            val otpEvent = detectOtpUseCase(message) ?: OtpEvent(
-                id            = message.id,
-                otpCode       = "[bypassed]",
-                sender        = message.sender,
-                fullBody      = message.body,
-                detectedAt    = Clock.System.now(),
-                sourceMessage = message,
-            )
+            val otpEvent = detectOtpUseCase(message)
+            if (otpEvent == null) {
+                Log.i(TAG, "No OTP detected in message from ${message.sender}, skipping forwarding")
+                continue
+            }
 
-            Log.i(TAG, "Forwarding SMS (bypass=${otpEvent.otpCode == "[bypassed]"}) sender=${otpEvent.sender}")
+            Log.i(TAG, "Forwarding SMS sender=${otpEvent.sender}")
             Timber.i(
                 "SmsReceiver: forwarding code=%s sender=%s",
                 otpEvent.otpCode,
