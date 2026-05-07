@@ -34,6 +34,7 @@ data class LogsState(
 sealed interface LogsIntent {
     data object NavigateBack : LogsIntent
     data class OpenDetail(val id: String) : LogsIntent
+    data class RetryForwarding(val id: String) : LogsIntent
 }
 
 sealed interface LogsSideEffect {

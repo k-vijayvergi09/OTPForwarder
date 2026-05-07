@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.HorizontalDivider
@@ -113,7 +114,11 @@ internal fun HomeContent(
                 item { EmptyTodayState(Modifier.padding(horizontal = 24.dp)) }
             } else {
                 items(state.recentItems, key = { it.id }) { item ->
-                    OtpRow(item = item, modifier = Modifier.padding(horizontal = 24.dp))
+                    OtpRow(
+                        item = item,
+                        onRetry = { onIntent(HomeIntent.RetryForwarding(it)) },
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
                     if (state.recentItems.last() != item) {
                         HorizontalDivider(
                             modifier  = Modifier.padding(start = 24.dp),
@@ -261,7 +266,11 @@ private fun TodaySectionHeader(onSeeAll: () -> Unit, modifier: Modifier = Modifi
 // ── OTP row item ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun OtpRow(item: OtpRowUiItem, modifier: Modifier = Modifier) {
+private fun OtpRow(
+    item: OtpRowUiItem,
+    onRetry: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val ext = OtpTheme.extendedColors
     val colors = when (item.status) {
         ForwardingStatus.FORWARDED    -> StatusColors(
@@ -330,18 +339,30 @@ private fun OtpRow(item: OtpRowUiItem, modifier: Modifier = Modifier) {
             )
         }
 
-        Box(
-            modifier         = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .background(colors.badgeBg)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text  = item.status.badgeLabel(),
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                color = colors.badgeText,
-            )
+        Column(horizontalAlignment = Alignment.End) {
+            Box(
+                modifier         = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(colors.badgeBg)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text  = item.status.badgeLabel(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = colors.badgeText,
+                )
+            }
+            if (item.status != ForwardingStatus.FORWARDED) {
+                IconButton(onClick = { onRetry(item.id) }, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = "Retry sending SMS",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
     }
 }

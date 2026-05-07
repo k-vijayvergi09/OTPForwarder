@@ -6,6 +6,7 @@ import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.model.DestinationType
 import com.samsung.android.otpforwarder.core.model.ForwardingRecord
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
+import com.samsung.android.otpforwarder.core.sms.ForwardingDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
@@ -22,6 +23,7 @@ import kotlin.time.Duration.Companion.minutes
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: ForwardingRepository,
+    private val dispatcher: ForwardingDispatcher,
 ) : ViewModel(), ContainerHost<HomeState, HomeSideEffect> {
 
     override val container = container<HomeState, HomeSideEffect>(HomeState(isLoading = true))
@@ -63,6 +65,10 @@ class HomeViewModel @Inject constructor(
         }
         HomeIntent.NavigateToLogs -> intent { postSideEffect(HomeSideEffect.GoToLogs) }
         HomeIntent.NavigateToSettings -> intent { postSideEffect(HomeSideEffect.GoToSettings) }
+        is HomeIntent.RetryForwarding -> intent {
+            repository.updateStatus(intent.id, ForwardingStatus.PENDING, null)
+            dispatcher.forceRetry(intent.id)
+        }
     }
 }
 

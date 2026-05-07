@@ -50,4 +50,18 @@ interface ForwardingRepository {
      * screens can show "Forwarded · SMS" or "Forwarded · SMS + Email".
      */
     suspend fun updateDestinations(id: String, destinations: List<DestinationType>)
+
+    /**
+     * One-shot query returning all records currently in [ForwardingStatus.PENDING]
+     * or [ForwardingStatus.RETRY_QUEUED] status.
+     *
+     * Unlike [records] (a hot StateFlow), this suspends until the DB responds,
+     * so it is safe to call immediately after app startup before the StateFlow
+     * has received its first Room emission.
+     *
+     * Used by [com.samsung.android.otpforwarder.core.sms.ForwardingDispatcher]
+     * to re-enqueue work that got stuck in PENDING because WorkManager finished
+     * without updating the Room status.
+     */
+    suspend fun pendingRecords(): List<ForwardingRecord>
 }

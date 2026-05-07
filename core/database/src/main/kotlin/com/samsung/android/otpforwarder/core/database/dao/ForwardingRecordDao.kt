@@ -60,4 +60,14 @@ interface ForwardingRecordDao {
         destinations: String,
         updatedAt: Long,
     )
+
+    /**
+     * One-shot query that returns all records whose status is in [statuses].
+     *
+     * Unlike [observeAll], this suspends until the result is ready and then
+     * returns — no ongoing observation. Used on app startup to find records
+     * stuck in PENDING / RETRY_QUEUED that need to be re-enqueued.
+     */
+    @Query("SELECT * FROM forwarding_records WHERE status IN (:statuses) ORDER BY receivedAt DESC")
+    suspend fun getByStatuses(statuses: List<String>): List<ForwardingRecordEntity>
 }

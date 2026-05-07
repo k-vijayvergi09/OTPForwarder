@@ -30,6 +30,7 @@ sealed interface HomeIntent {
     data object ToggleForwarding : HomeIntent
     data object NavigateToLogs : HomeIntent
     data object NavigateToSettings : HomeIntent
+    data class RetryForwarding(val id: String) : HomeIntent
 }
 
 sealed interface HomeSideEffect {

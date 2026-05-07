@@ -26,7 +26,7 @@ import javax.inject.Singleton
  * Records are lost when the process is killed — Room-backed persistence comes in M4.
  */
 @Singleton
-class InMemoryForwardingRepository @Inject constructor() : ForwardingRepository {
+abstract class InMemoryForwardingRepository: ForwardingRepository {
 
     private val _records = MutableStateFlow<List<ForwardingRecord>>(emptyList())
     override val records: StateFlow<List<ForwardingRecord>> = _records.asStateFlow()

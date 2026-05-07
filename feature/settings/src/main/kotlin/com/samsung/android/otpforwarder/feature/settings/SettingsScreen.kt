@@ -1,5 +1,6 @@
 package com.samsung.android.otpforwarder.feature.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -405,6 +407,8 @@ private fun DestinationRow(
     selectedDestinations: Set<DestinationType>,
     onToggle: (DestinationType) -> Unit,
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -425,7 +429,15 @@ private fun DestinationRow(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected    = DestinationType.SMS in selectedDestinations,
-                onClick     = { onToggle(DestinationType.SMS) },
+                onClick     = {
+                    val willBeSelected = DestinationType.SMS !in selectedDestinations
+                    Toast.makeText(
+                        context,
+                        if (willBeSelected) "SMS selected" else "SMS deselected",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    onToggle(DestinationType.SMS)
+                },
                 label       = { Text("SMS") },
                 leadingIcon = {
                     Icon(Icons.Rounded.Sms, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -433,7 +445,15 @@ private fun DestinationRow(
             )
             FilterChip(
                 selected    = DestinationType.EMAIL in selectedDestinations,
-                onClick     = { onToggle(DestinationType.EMAIL) },
+                onClick     = {
+                    val willBeSelected = DestinationType.EMAIL !in selectedDestinations
+                    Toast.makeText(
+                        context,
+                        if (willBeSelected) "Email selected" else "Email deselected",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    onToggle(DestinationType.EMAIL)
+                },
                 label       = { Text("Email") },
                 leadingIcon = {
                     Icon(Icons.Rounded.Email, contentDescription = null, modifier = Modifier.size(16.dp))

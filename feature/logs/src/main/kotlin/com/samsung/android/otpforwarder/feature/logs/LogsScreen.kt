@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
@@ -109,6 +110,7 @@ internal fun LogsContent(
                     items(group.items, key = { it.id }) { item ->
                         LogRowItem(
                             item     = item,
+                            onRetry  = { onIntent(LogsIntent.RetryForwarding(it)) },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         )
                     }
@@ -191,7 +193,11 @@ private fun TodaySummaryCard(
 // ── Log row item ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun LogRowItem(item: LogRowUiItem, modifier: Modifier = Modifier) {
+private fun LogRowItem(
+    item: LogRowUiItem,
+    onRetry: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val ext = OtpTheme.extendedColors
 
     val (iconBg, iconTint, icon) = when (item.status) {
@@ -244,11 +250,23 @@ private fun LogRowItem(item: LogRowUiItem, modifier: Modifier = Modifier) {
             )
         }
 
-        Text(
-            text  = item.timeLabel,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.4.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text  = item.timeLabel,
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.4.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (item.status != ForwardingStatus.FORWARDED) {
+                IconButton(onClick = { onRetry(item.id) }, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = "Retry sending SMS",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

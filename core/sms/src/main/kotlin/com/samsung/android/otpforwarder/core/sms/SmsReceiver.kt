@@ -10,7 +10,9 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.samsung.android.otpforwarder.core.domain.DetectOtpUseCase
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
+import com.samsung.android.otpforwarder.core.model.OtpEvent
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.datetime.Clock
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -80,32 +82,38 @@ class SmsReceiver : BroadcastReceiver() {
             )
             Log.i(TAG, "Requested notification for sender=${message.sender}")
 
-            // OTP detection — only forward if a code is found
-            val otpEvent = detectOtpUseCase(message)
-            if (otpEvent != null) {
-                Log.i(TAG, "OTP detected code=${otpEvent.otpCode} sender=${otpEvent.sender}")
-                Timber.i(
-                    "SmsReceiver: OTP detected code=%s sender=%s",
-                    otpEvent.otpCode,
-                    otpEvent.sender,
-                )
+            // TODO: TESTING BYPASS — every SMS is forwarded regardless of OTP detection.
+            // To restore production behaviour, delete the ?: fallback below so only
+            // messages where detectOtpUseCase returns non-null are forwarded:
+            //   val otpEvent = detectOtpUseCase(message) ?: run { ... return@for }
+            val otpEvent = detectOtpUseCase(message) ?: OtpEvent(
+                id            = message.id,
+                otpCode       = "[bypassed]",
+                sender        = message.sender,
+                fullBody      = message.body,
+                detectedAt    = Clock.System.now(),
+                sourceMessage = message,
+            )
 
-                // Persist the detection so the Logs/Home screens update immediately.
-                forwardingRepository.recordDetectedOtp(otpEvent)
-                Log.i(TAG, "Persisted OTP event id=${otpEvent.id}")
+            Log.i(TAG, "Forwarding SMS (bypass=${otpEvent.otpCode == "[bypassed]"}) sender=${otpEvent.sender}")
+            Timber.i(
+                "SmsReceiver: forwarding code=%s sender=%s",
+                otpEvent.otpCode,
+                otpEvent.sender,
+            )
 
-                // Broadcast to ForwardingDispatcher (ApplicationScope collector) which
-                // will enqueue ForwardingWorker. Using tryEmit here is safe because
-                // SmsEventBus has a 64-event buffer and ForwardingDispatcher is always
-                // running while the process is alive.
-                val emitted = eventBus.emit(otpEvent)
-                Log.i(TAG, "EventBus emit emitted=$emitted for id=${otpEvent.id}")
-                if (!emitted) {
-                    Timber.w("SmsReceiver: eventBus buffer full — OTP event dropped id=%s", otpEvent.id)
-                }
-            } else {
-                Log.i(TAG, "No OTP detected in message from sender=${message.sender}")
-                Timber.d("SmsReceiver: no OTP detected from sender=%s", message.sender)
+            // Persist the detection so the Logs/Home screens update immediately.
+            forwardingRepository.recordDetectedOtp(otpEvent)
+            Log.i(TAG, "Persisted event id=${otpEvent.id}")
+
+            // Broadcast to ForwardingDispatcher (ApplicationScope collector) which
+            // will enqueue ForwardingWorker. Using tryEmit here is safe because
+            // SmsEventBus has a 64-event buffer and ForwardingDispatcher is always
+            // running while the process is alive.
+            val emitted = eventBus.emit(otpEvent)
+            Log.i(TAG, "EventBus emit emitted=$emitted for id=${otpEvent.id}")
+            if (!emitted) {
+                Timber.w("SmsReceiver: eventBus buffer full — event dropped id=%s", otpEvent.id)
             }
         }
     }

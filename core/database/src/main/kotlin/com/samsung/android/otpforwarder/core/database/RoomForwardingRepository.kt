@@ -107,4 +107,9 @@ class RoomForwardingRepository @Inject constructor(
             updatedAt    = Clock.System.now().toEpochMilliseconds(),
         )
     }
+
+    override suspend fun pendingRecords(): List<ForwardingRecord> =
+        dao.getByStatuses(
+            listOf(ForwardingStatus.PENDING.name, ForwardingStatus.RETRY_QUEUED.name)
+        ).map(ForwardingRecordEntity::toDomain)
 }
