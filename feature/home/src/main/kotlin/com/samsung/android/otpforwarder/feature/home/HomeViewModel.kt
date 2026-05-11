@@ -41,7 +41,7 @@ class HomeViewModel @Inject constructor(
         ) { records, stats ->
             val items = records
                 .take(10) // Home shows at most 10 recent entries
-                .map { it.toRowUiItem(fullMask = true) }
+                .map { it.toRowUiItem() }
             Pair(items, stats)
         }.onEach { (items, stats) ->
             intent {
@@ -74,26 +74,14 @@ class HomeViewModel @Inject constructor(
 
 // ── Mapper ────────────────────────────────────────────────────────────────────
 
-private fun ForwardingRecord.toRowUiItem(fullMask: Boolean): OtpRowUiItem = OtpRowUiItem(
-    id         = id,
-    sender     = sender,
-    maskedOtp  = if (fullMask) otpCode.fullyMasked() else otpCode.partialMask(),
-    subtitle   = buildSubtitle(),
-    status     = status,
-    timeLabel  = receivedAt.toTimeLabel(),
+private fun ForwardingRecord.toRowUiItem(): OtpRowUiItem = OtpRowUiItem(
+    id        = id,
+    sender    = sender,
+    otp       = otpCode,
+    subtitle  = buildSubtitle(),
+    status    = status,
+    timeLabel = receivedAt.toTimeLabel(),
 )
-
-private fun String.fullyMasked(): String {
-    val groups = chunked(3).map { "•".repeat(it.length) }
-    return groups.joinToString(" ")
-}
-
-private fun String.partialMask(): String {
-    if (length <= 3) return this
-    val visible = takeLast(3)
-    val hidden  = "•".repeat(length - 3)
-    return "$hidden $visible"
-}
 
 private fun ForwardingRecord.buildSubtitle(): String = when (status) {
     ForwardingStatus.FORWARDED -> when {

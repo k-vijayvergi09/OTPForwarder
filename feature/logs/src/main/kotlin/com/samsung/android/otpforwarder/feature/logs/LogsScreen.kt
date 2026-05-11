@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
@@ -33,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -210,6 +213,7 @@ private fun LogRowItem(
     onRetry: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val clipboardManager = LocalClipboardManager.current
     val ext = OtpTheme.extendedColors
 
     val (iconBg, iconTint, icon) = when (item.status) {
@@ -247,15 +251,28 @@ private fun LogRowItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text  = item.maskedOtp,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily    = FontFamily.Monospace,
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text  = item.otp,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily    = FontFamily.Monospace,
+                        fontWeight    = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                IconButton(
+                    onClick  = { clipboardManager.setText(AnnotatedString(item.otp)) },
+                    modifier = Modifier.size(20.dp),
+                ) {
+                    Icon(
+                        imageVector        = Icons.Rounded.ContentCopy,
+                        contentDescription = "Copy OTP",
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier           = Modifier.size(14.dp),
+                    )
+                }
+            }
             Text(
                 text  = item.deliveryLine,
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.4.sp),
@@ -405,16 +422,16 @@ private fun LogsPreview() {
                     LogGroup(
                         label = "TODAY",
                         items = listOf(
-                            LogRowUiItem("1", "HDFC Bank", "••• 913", "This is the full SMS body from HDFC Bank.", "SMS delivered · Email delivered", ForwardingStatus.FORWARDED,    "2m ago"),
-                            LogRowUiItem("2", "Amazon",    "••• 127", "This is the full SMS body from Amazon.", "Email delivered",                ForwardingStatus.FORWARDED,    "18m ago"),
-                            LogRowUiItem("3", "Uber",      "••• ••••", "This is the full SMS body from Uber.", "Retrying",                      ForwardingStatus.RETRY_QUEUED, "42m ago"),
-                            LogRowUiItem("4", "Google",    "••• •••", "This is the full SMS body from Google.", "SMS send failed",               ForwardingStatus.FAILED,       "1h ago"),
+                            LogRowUiItem("1", "HDFC Bank", "842913",   "This is the full SMS body from HDFC Bank.", "SMS delivered · Email delivered", ForwardingStatus.FORWARDED,    "2m ago"),
+                            LogRowUiItem("2", "Amazon",    "4127",    "This is the full SMS body from Amazon.",    "Email delivered",                ForwardingStatus.FORWARDED,    "18m ago"),
+                            LogRowUiItem("3", "Uber",      "57382",   "This is the full SMS body from Uber.",      "Retrying",                       ForwardingStatus.RETRY_QUEUED, "42m ago"),
+                            LogRowUiItem("4", "Google",    "21539478","This is the full SMS body from Google.",    "SMS send failed",                ForwardingStatus.FAILED,       "1h ago"),
                         ),
                     ),
                     LogGroup(
                         label = "YESTERDAY",
                         items = listOf(
-                            LogRowUiItem("5", "ICICI Bank", "••• 501", "This is the full SMS body from ICICI Bank.", "SMS delivered", ForwardingStatus.FORWARDED, "yday 22:14"),
+                            LogRowUiItem("5", "ICICI Bank", "7385", "This is the full SMS body from ICICI Bank.", "SMS delivered", ForwardingStatus.FORWARDED, "yday 22:14"),
                         ),
                     ),
                 ),

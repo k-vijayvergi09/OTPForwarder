@@ -4,6 +4,7 @@ import com.samsung.android.otpforwarder.core.domain.OtpDetectionResult
 import com.samsung.android.otpforwarder.core.model.SmsMessage
 import kotlinx.datetime.Clock
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -102,8 +103,10 @@ class OtpDetectorImplTest {
         assertDetected("Your passcode is 135791.", "135791")
     }
 
-    @Test fun `detects OTP with token keyword`() {
-        assertDetected("Your token is 112358. It expires in 60 seconds.", "112358")
+    @Test fun `detects OTP — 'token' alone no longer matches, but OTP keyword does`() {
+        // "token" was dropped (too broad). Ensure messages that happen to contain
+        // "token" are still detected when a Tier-1 keyword is also present.
+        assertDetected("Your OTP token is 112358. It expires in 60 seconds.", "112358")
     }
 
     // -------------------------------------------------------------------------
@@ -130,8 +133,8 @@ class OtpDetectorImplTest {
     // -------------------------------------------------------------------------
 
     @Test fun `rejects 3-digit number — too short`() {
-        // "123" alone is < 4 digits and should not be treated as OTP.
-        assertNotOtp("Your code is 123. Too short.")
+        // Even with an OTP keyword present, a 3-digit number is below the 4-digit minimum.
+        assertNotOtp("Your OTP is 123. Too short.")
     }
 
     @Test fun `rejects 9-digit number — too long`() {
@@ -144,7 +147,8 @@ class OtpDetectorImplTest {
     }
 
     @Test fun `accepts exactly 8 digits`() {
-        assertDetected("Your code is 12345678.", "12345678")
+        // Bare "code" was dropped from the keyword list; use a Tier-2 phrase instead.
+        assertDetected("Your verification code is 12345678.", "12345678")
     }
 
     // -------------------------------------------------------------------------
@@ -190,10 +194,27 @@ class OtpDetectorImplTest {
     // Keyword regex coverage
     // -------------------------------------------------------------------------
 
-    @Test fun `KEYWORD_REGEX matches OTP (case-insensitive)`() {
-        assertTrue(OtpDetectorImpl.KEYWORD_REGEX.containsMatchIn("Your OTP is ready"))
-        assertTrue(OtpDetectorImpl.KEYWORD_REGEX.containsMatchIn("your otp is ready"))
-        assertTrue(OtpDetectorImpl.KEYWORD_REGEX.containsMatchIn("your Otp Is Ready"))
+    @Test fun `TIER1_KEYWORD_REGEX matches otp, password, pin (case-insensitive)`() {
+        // "otp" in all cases
+        assertTrue(OtpDetectorImpl.TIER1_KEYWORD_REGEX.containsMatchIn("Your OTP is ready"))
+        assertTrue(OtpDetectorImpl.TIER1_KEYWORD_REGEX.containsMatchIn("your otp is ready"))
+        assertTrue(OtpDetectorImpl.TIER1_KEYWORD_REGEX.containsMatchIn("your Otp Is Ready"))
+        // "password" and "pin"
+        assertTrue(OtpDetectorImpl.TIER1_KEYWORD_REGEX.containsMatchIn("Temporary password: 1234"))
+        assertTrue(OtpDetectorImpl.TIER1_KEYWORD_REGEX.containsMatchIn("Your PIN has been set"))
+    }
+
+    @Test fun `TIER2_KEYWORD_REGEX matches contextual phrases`() {
+        assertTrue(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Use verification code 5678"))
+        assertTrue(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Use code 5678 to sign in"))
+        assertTrue(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Your one-time password is 5678"))
+        assertTrue(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Authentication code: 5678"))
+        assertTrue(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Enter passcode 5678"))
+    }
+
+    @Test fun `TIER2_KEYWORD_REGEX does not match bare 'code' or 'token'`() {
+        assertFalse(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Your tracking code is 12345"))
+        assertFalse(OtpDetectorImpl.TIER2_KEYWORD_REGEX.containsMatchIn("Discount token applied"))
     }
 
     @Test fun `DIGIT_REGEX does not match 3-digit run`() {

@@ -26,7 +26,7 @@ enum class BottomNavTab(
     val label: String,
     val icon: ImageVector,
 ) {
-    HOME(AppDestination.Home,  "Home",  Icons.Rounded.Home),
-    LOGS(AppDestination.Logs,  "Logs",  Icons.Rounded.History),
+    HOME(AppDestination.Home,   "Home",  Icons.Rounded.Home),
     RULES(AppDestination.Rules, "Rules", Icons.Rounded.RuleFolder),
+    LOGS(AppDestination.Logs,   "Logs",  Icons.Rounded.History),
 }

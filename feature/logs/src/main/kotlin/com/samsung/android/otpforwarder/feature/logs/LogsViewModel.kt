@@ -86,12 +86,9 @@ private fun List<ForwardingRecord>.groupByDate(): List<LogGroup> {
 }
 
 private fun ForwardingRecord.toLogRowUiItem(): LogRowUiItem = LogRowUiItem(
-    id          = id,
-    sender      = sender,
-    maskedOtp   = when (status) {
-        ForwardingStatus.FORWARDED -> otpCode.partialMask()
-        else                       -> otpCode.fullyMasked()
-    },
+    id           = id,
+    sender       = sender,
+    otp          = otpCode,
     fullBody     = fullBody,
     deliveryLine = buildDeliveryLine(),
     status       = status,
@@ -108,14 +105,6 @@ private fun ForwardingRecord.buildDeliveryLine(): String = when (status) {
     ForwardingStatus.PENDING       -> "Queued"
     ForwardingStatus.RETRY_QUEUED  -> "Retrying"
     ForwardingStatus.FAILED        -> errorMessage ?: "Failed"
-}
-
-private fun String.fullyMasked(): String =
-    chunked(3).joinToString(" ") { "•".repeat(it.length) }
-
-private fun String.partialMask(): String {
-    if (length <= 3) return this
-    return "••• ${takeLast(3)}"
 }
 
 private fun kotlinx.datetime.Instant.toTimeLabel(): String {

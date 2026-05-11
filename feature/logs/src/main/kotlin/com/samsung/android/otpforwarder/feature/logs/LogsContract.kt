@@ -7,8 +7,8 @@ import com.samsung.android.otpforwarder.core.model.ForwardingStatus
 data class LogRowUiItem(
     val id: String,
     val sender: String,
-    /** Last 3 digits visible, e.g. "••• 842". Fully masked when PENDING/FAILED. */
-    val maskedOtp: String,
+    /** The extracted OTP code as-is, e.g. "842913", "4127". No masking applied. */
+    val otp: String,
     val fullBody: String,
     /** Destination summary, e.g. "SMS → +91 98••• • · Email delivered" */
     val deliveryLine: String,

@@ -7,8 +7,8 @@ import com.samsung.android.otpforwarder.core.model.ForwardingStatus
 data class OtpRowUiItem(
     val id: String,
     val sender: String,
-    /** Fully masked, e.g. "••• •••" — shown on Home for privacy. */
-    val maskedOtp: String,
+    /** The extracted OTP code as-is, e.g. "842913", "4127". No masking applied. */
+    val otp: String,
     /** e.g. "Forwarded · SMS + Email", "Retry in 8s", "Network error" */
     val subtitle: String,
     val status: ForwardingStatus,

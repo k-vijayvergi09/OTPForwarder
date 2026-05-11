@@ -75,18 +75,20 @@ class SmsReceiver : BroadcastReceiver() {
             incomingSmsMonitor.record(message)
             Log.i(TAG, "Recorded SMS in IncomingSmsMonitor sender=${message.sender}")
 
-            // Post a system notification for every incoming SMS (not just OTPs)
-            incomingSmsNotifier.notifyIncomingMessage(
-                sender  = message.sender,
-                preview = message.body.take(120),
-            )
-            Log.i(TAG, "Requested notification for sender=${message.sender}")
-
             val otpEvent = detectOtpUseCase(message)
             if (otpEvent == null) {
                 Log.i(TAG, "No OTP detected in message from ${message.sender}, skipping forwarding")
                 continue
             }
+
+            // Only notify for confirmed OTP messages — avoids leaking the content of
+            // personal texts, delivery receipts, and promotional messages to the
+            // notification shade.
+            incomingSmsNotifier.notifyIncomingMessage(
+                sender  = message.sender,
+                preview = message.body.take(120),
+            )
+            Log.i(TAG, "Requested notification for sender=${message.sender}")
 
             Log.i(TAG, "Forwarding SMS sender=${otpEvent.sender}")
             Timber.i(

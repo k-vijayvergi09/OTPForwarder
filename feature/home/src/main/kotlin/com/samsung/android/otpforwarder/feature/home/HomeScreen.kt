@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Sms
@@ -31,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -82,8 +84,7 @@ internal fun HomeContent(
             .statusBarsPadding(),
     ) {
         HomeTopBar(
-            onNotifications = { /* TODO M5 */ },
-            onSettings      = { onIntent(HomeIntent.NavigateToSettings) },
+            onSettings = { onIntent(HomeIntent.NavigateToSettings) },
         )
 
         LazyColumn(
@@ -137,7 +138,7 @@ internal fun HomeContent(
 // ── Top app bar ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun HomeTopBar(onNotifications: () -> Unit, onSettings: () -> Unit) {
+private fun HomeTopBar(onSettings: () -> Unit) {
     Row(
         modifier          = Modifier
             .fillMaxWidth()
@@ -150,9 +151,6 @@ private fun HomeTopBar(onNotifications: () -> Unit, onSettings: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = onNotifications) {
-            Icon(Icons.Rounded.Notifications, contentDescription = "Notifications")
-        }
         IconButton(onClick = onSettings) {
             Icon(Icons.Rounded.Settings, contentDescription = "Settings")
         }
@@ -271,6 +269,7 @@ private fun OtpRow(
     onRetry: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val clipboardManager = LocalClipboardManager.current
     val ext = OtpTheme.extendedColors
     val colors = when (item.status) {
         ForwardingStatus.FORWARDED    -> StatusColors(
@@ -328,15 +327,28 @@ private fun OtpRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text  = item.maskedOtp,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontFamily    = FontFamily.Monospace,
-                    fontWeight    = FontWeight.Bold,
-                    letterSpacing = 3.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text  = item.otp,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily    = FontFamily.Monospace,
+                        fontWeight    = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                IconButton(
+                    onClick  = { clipboardManager.setText(AnnotatedString(item.otp)) },
+                    modifier = Modifier.size(20.dp),
+                ) {
+                    Icon(
+                        imageVector        = Icons.Rounded.ContentCopy,
+                        contentDescription = "Copy OTP",
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier           = Modifier.size(14.dp),
+                    )
+                }
+            }
         }
 
         Column(horizontalAlignment = Alignment.End) {
@@ -409,9 +421,9 @@ private fun HomePreview() {
                 activeRulesCount    = 3,
                 todayCount          = 24,
                 recentItems = listOf(
-                    OtpRowUiItem("1", "HDFC Bank",  "••• •••", "Forwarded · SMS + Email", ForwardingStatus.FORWARDED,    "2m ago"),
-                    OtpRowUiItem("2", "Amazon",     "••• •••", "Retry queued",            ForwardingStatus.RETRY_QUEUED, "18m ago"),
-                    OtpRowUiItem("3", "MakeMyTrip", "••• •••", "Network error",           ForwardingStatus.FAILED,       "1h ago"),
+                    OtpRowUiItem("1", "HDFC Bank",  "842913", "Forwarded · SMS + Email", ForwardingStatus.FORWARDED,    "2m ago"),
+                    OtpRowUiItem("2", "Amazon",     "4127",   "Retry queued",            ForwardingStatus.RETRY_QUEUED, "18m ago"),
+                    OtpRowUiItem("3", "MakeMyTrip", "57382",  "Network error",           ForwardingStatus.FAILED,       "1h ago"),
                 ),
             ),
             onIntent = {},
