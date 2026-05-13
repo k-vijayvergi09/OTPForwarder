@@ -1,9 +1,7 @@
 package com.samsung.android.otpforwarder.feature.settings
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,48 +15,33 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.ToggleOn
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.samsung.android.otpforwarder.core.common.validation.PhoneNumberValidator
 import com.samsung.android.otpforwarder.core.designsystem.theme.OtpForwarderTheme
-import com.samsung.android.otpforwarder.core.model.DestinationType
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
 
@@ -112,23 +95,9 @@ internal fun SettingsContent(
                         onToggle = { onIntent(SettingsIntent.ToggleForwarding) },
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-                    DestinationRow(
-                        selectedDestinations = state.defaultDestinations,
-                        onToggle             = { onIntent(SettingsIntent.ToggleDestination(it)) },
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(start = 16.dp))
-                    ActionRow(
-                        icon     = Icons.Rounded.Sms,
-                        title    = "Default SMS destination",
-                        subtitle = state.defaultPhoneNumber.ifBlank { "Not set" },
-                        onClick  = { onIntent(SettingsIntent.ShowPhoneNumberDialog) },
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-                    ActionRow(
-                        icon     = Icons.Rounded.Email,
-                        title    = "Default email destination",
-                        subtitle = state.defaultEmailAddress.ifBlank { "Not set" },
-                        onClick  = { onIntent(SettingsIntent.ShowEmailDialog) },
+                    DelayRow(
+                        delay    = state.forwardingDelaySeconds,
+                        onChange = { onIntent(SettingsIntent.SetForwardingDelay(it)) },
                     )
                 }
             }
@@ -168,7 +137,7 @@ internal fun SettingsContent(
                     ActionRow(
                         icon     = Icons.Rounded.FileUpload,
                         title    = "Export config",
-                        subtitle = "Save rules & settings as encrypted JSON",
+                        subtitle = "Save destinations & settings as encrypted JSON",
                         onClick  = { onIntent(SettingsIntent.ExportConfig) },
                     )
                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
@@ -182,33 +151,6 @@ internal fun SettingsContent(
                 Spacer(Modifier.height(32.dp))
             }
         }
-    }
-
-    // ── Dialogs (rendered outside the scrollable column) ──────────────────────
-
-    if (state.showPhoneNumberDialog) {
-        EditValueDialog(
-            title        = "SMS destination",
-            label        = "Phone number",
-            placeholder  = "+91 98765 43210",
-            initialValue = state.defaultPhoneNumber,
-            keyboardType = KeyboardType.Phone,
-            validate     = PhoneNumberValidator::errorOrNull,
-            onDismiss    = { onIntent(SettingsIntent.HidePhoneNumberDialog) },
-            onSave       = { onIntent(SettingsIntent.SavePhoneNumber(it)) },
-        )
-    }
-
-    if (state.showEmailDialog) {
-        EditValueDialog(
-            title        = "Email destination",
-            label        = "Email address",
-            placeholder  = "you@example.com",
-            initialValue = state.defaultEmailAddress,
-            keyboardType = KeyboardType.Email,
-            onDismiss    = { onIntent(SettingsIntent.HideEmailDialog) },
-            onSave       = { onIntent(SettingsIntent.SaveEmail(it)) },
-        )
     }
 }
 
@@ -344,7 +286,7 @@ private fun ActionRow(
     }
 }
 
-// ── Delay slider row (used by ForwardingDelay setting) ────────────────────────
+// ── Delay slider row ──────────────────────────────────────────────────────────
 
 @Composable
 private fun DelayRow(
@@ -400,135 +342,6 @@ private fun DelayRow(
     }
 }
 
-// ── Destination chip row ──────────────────────────────────────────────────────
-
-@Composable
-private fun DestinationRow(
-    selectedDestinations: Set<DestinationType>,
-    onToggle: (DestinationType) -> Unit,
-) {
-    val context = LocalContext.current
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Text(
-            text  = "Forward OTPs to",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text  = "Applied when no specific rule matches",
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.3.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected    = DestinationType.SMS in selectedDestinations,
-                onClick     = {
-                    val willBeSelected = DestinationType.SMS !in selectedDestinations
-                    Toast.makeText(
-                        context,
-                        if (willBeSelected) "SMS selected" else "SMS deselected",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    onToggle(DestinationType.SMS)
-                },
-                label       = { Text("SMS") },
-                leadingIcon = {
-                    Icon(Icons.Rounded.Sms, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-            )
-            FilterChip(
-                selected    = DestinationType.EMAIL in selectedDestinations,
-                onClick     = {
-                    val willBeSelected = DestinationType.EMAIL !in selectedDestinations
-                    Toast.makeText(
-                        context,
-                        if (willBeSelected) "Email selected" else "Email deselected",
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    onToggle(DestinationType.EMAIL)
-                },
-                label       = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Rounded.Email, contentDescription = null, modifier = Modifier.size(16.dp))
-                },
-            )
-        }
-    }
-}
-
-// ── Generic edit-value dialog ─────────────────────────────────────────────────
-
-@Composable
-private fun EditValueDialog(
-    title: String,
-    label: String,
-    placeholder: String,
-    initialValue: String,
-    keyboardType: KeyboardType,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-    /** Optional validator: returns an error message or null if the value is valid. */
-    validate: ((String) -> String?)? = null,
-) {
-    var value by remember(initialValue) { mutableStateOf(initialValue) }
-    // Only show errors after the user has started typing (avoid alarming the user on open).
-    var dirty by remember { mutableStateOf(false) }
-
-    val error: String? = if (dirty && validate != null) validate(value) else null
-    val canSave = value.isNotBlank() && error == null
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text  = title,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-            )
-        },
-        text = {
-            OutlinedTextField(
-                value         = value,
-                onValueChange = {
-                    value = it
-                    dirty = true
-                },
-                label         = { Text(label) },
-                placeholder   = { Text(placeholder) },
-                singleLine    = true,
-                isError       = error != null,
-                supportingText = error?.let { msg ->
-                    { Text(text = msg, color = MaterialTheme.colorScheme.error) }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                modifier      = Modifier.fillMaxWidth(),
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick  = { if (canSave) onSave(value) },
-                enabled  = canSave,
-            ) {
-                Text(
-                    text  = "Save",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (canSave) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
 // ── Preview ───────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, showSystemUi = true)
@@ -538,30 +351,12 @@ private fun SettingsPreview() {
         SettingsContent(
             state = SettingsState(
                 isForwardingEnabled    = true,
-                defaultPhoneNumber     = "+91 98765 43210",
-                defaultEmailAddress    = "me@example.com",
-                defaultDestinations    = setOf(DestinationType.SMS, DestinationType.EMAIL),
+                forwardingDelaySeconds = 3,
                 isBiometricLockEnabled = false,
                 notificationsEnabled   = true,
                 isLoading              = false,
             ),
             onIntent = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun PhoneDialogPreview() {
-    OtpForwarderTheme {
-        EditValueDialog(
-            title        = "SMS destination",
-            label        = "Phone number",
-            placeholder  = "+91 98765 43210",
-            initialValue = "",
-            keyboardType = KeyboardType.Phone,
-            onDismiss    = {},
-            onSave       = {},
         )
     }
 }

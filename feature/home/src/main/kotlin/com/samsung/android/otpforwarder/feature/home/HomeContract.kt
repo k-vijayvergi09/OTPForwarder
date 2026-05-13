@@ -20,7 +20,7 @@ data class OtpRowUiItem(
 
 data class HomeState(
     val isForwardingEnabled: Boolean = true,
-    val activeRulesCount: Int = 0,
+    val activeDestinationsCount: Int = 0,
     val todayCount: Int = 0,
     val recentItems: List<OtpRowUiItem> = emptyList(),
     val isLoading: Boolean = false,

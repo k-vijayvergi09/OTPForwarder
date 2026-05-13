@@ -2,7 +2,9 @@ package com.samsung.android.otpforwarder.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.samsung.android.otpforwarder.core.domain.EmailDestinationRepository
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
+import com.samsung.android.otpforwarder.core.domain.SmsDestinationRepository
 import com.samsung.android.otpforwarder.core.model.DestinationType
 import com.samsung.android.otpforwarder.core.model.ForwardingRecord
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
@@ -24,6 +26,8 @@ import kotlin.time.Duration.Companion.minutes
 class HomeViewModel @Inject constructor(
     private val repository: ForwardingRepository,
     private val dispatcher: ForwardingDispatcher,
+    private val smsDestinationRepository: SmsDestinationRepository,
+    private val emailDestinationRepository: EmailDestinationRepository,
 ) : ViewModel(), ContainerHost<HomeState, HomeSideEffect> {
 
     override val container = container<HomeState, HomeSideEffect>(HomeState(isLoading = true))
@@ -38,19 +42,21 @@ class HomeViewModel @Inject constructor(
         combine(
             repository.todayRecords(),
             repository.todayStats(),
-        ) { records, stats ->
+            smsDestinationRepository.observeEnabled(),
+            emailDestinationRepository.observeEnabled(),
+        ) { records, stats, smsEnabled, emailEnabled ->
             val items = records
                 .take(10) // Home shows at most 10 recent entries
                 .map { it.toRowUiItem() }
-            Pair(items, stats)
-        }.onEach { (items, stats) ->
+            Triple(items, stats, smsEnabled.size + emailEnabled.size)
+        }.onEach { (items, stats, destinationsCount) ->
             intent {
                 reduce {
                     state.copy(
-                        isLoading      = false,
-                        recentItems    = items,
-                        todayCount     = stats.total,
-                        activeRulesCount = 0, // wired in M2 when RulesRepository exists
+                        isLoading               = false,
+                        recentItems             = items,
+                        todayCount              = stats.total,
+                        activeDestinationsCount = destinationsCount,
                     )
                 }
             }

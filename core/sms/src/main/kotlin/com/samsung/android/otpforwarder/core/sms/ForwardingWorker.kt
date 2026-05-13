@@ -12,19 +12,41 @@ import androidx.work.WorkerParameters
 import com.samsung.android.otpforwarder.core.common.validation.PhoneNumberValidator
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
+import com.samsung.android.otpforwarder.core.domain.SmsDestinationRepository
 import com.samsung.android.otpforwarder.core.model.DestinationType
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
+import com.samsung.android.otpforwarder.core.model.SmsDestination
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
+/**
+ * Background worker that forwards a single detected OTP to every enabled
+ * [SmsDestination].
+ *
+ * As of the Rules → Destinations migration (2026-05-13), there is no per-rule
+ * routing: every detected OTP fans out to every destination with
+ * [SmsDestination.isEnabled] = true. Email destinations are persisted by the
+ * Destinations feature but not yet consumed here (see milestone M3).
+ *
+ * Outcome rules:
+ *  - 0 enabled SMS destinations → fail-success (status FAILED with explanation, Result.success())
+ *  - ≥1 destinations, at least one delivers → record FORWARDED, channels = [SMS]
+ *  - ≥1 destinations, none deliver → retry up to [MAX_ATTEMPTS]; then FAILED
+ *
+ * Per-destination success is best-effort: a single dispatch failure to any one
+ * number is treated as a worker-level failure to keep the WorkManager retry
+ * semantics simple. We can split into per-destination work items later if
+ * partial-success retries become a requirement.
+ */
 @HiltWorker
 class ForwardingWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val forwardingRepository: ForwardingRepository,
     private val settingsRepository: SettingsRepository,
+    private val smsDestinationRepository: SmsDestinationRepository,
     private val smsSender: SmsSender,
     private val forwardingNotifier: ForwardingNotifier,
 ) : CoroutineWorker(context, params) {
@@ -43,23 +65,19 @@ class ForwardingWorker @AssistedInject constructor(
             return Result.success()
         }
 
-        if (DestinationType.SMS !in settings.defaultDestinations) {
-            Timber.i("ForwardingWorker: SMS destination not enabled")
-            // Update status so the UI doesn't show PENDING indefinitely.
-            forwardingRepository.updateStatus(eventId, ForwardingStatus.FAILED, "SMS destination not enabled")
-            return Result.success()
-        }
+        val destinations = smsDestinationRepository.enabledOnce()
+            .filter { PhoneNumberValidator.isValid(it.phoneNumber) }
 
-        val destinationNumber = settings.defaultPhoneNumber
-        if (destinationNumber.isBlank()) {
-            Timber.w("ForwardingWorker: SMS destination enabled but no number configured")
-            forwardingRepository.updateStatus(eventId, ForwardingStatus.FAILED, "No destination number")
-            return Result.failure()
-        }
-        if (!PhoneNumberValidator.isValid(destinationNumber)) {
-            Timber.w("ForwardingWorker: Destination number failed validation: $destinationNumber")
-            forwardingRepository.updateStatus(eventId, ForwardingStatus.FAILED, "Invalid destination number")
-            return Result.failure()
+        if (destinations.isEmpty()) {
+            Timber.w("ForwardingWorker: No enabled SMS destinations configured for event $eventId")
+            forwardingRepository.updateStatus(
+                eventId,
+                ForwardingStatus.FAILED,
+                "No enabled SMS destination configured",
+            )
+            // Treat as success at the WorkManager level — retrying won't help if
+            // the user simply hasn't added a destination yet.
+            return Result.success()
         }
 
         // Prefer input data — ForwardingDispatcher now passes sender + fullBody directly
@@ -68,8 +86,6 @@ class ForwardingWorker @AssistedInject constructor(
         val sender = inputData.getString(KEY_SENDER)
             ?: forwardingRepository.records.first().find { it.id == eventId }?.sender
             ?: run {
-                // Record not in the StateFlow yet — the DB upsert is still in-flight.
-                // Retry after the backoff period; it will be there by then.
                 Timber.w("ForwardingWorker: Record not found for id $eventId — retrying")
                 return Result.retry()
             }
@@ -82,34 +98,65 @@ class ForwardingWorker @AssistedInject constructor(
             }
 
         val messageBody = "FWD from $sender: $fullBody"
-        val success = smsSender.sendSms(destinationNumber, messageBody)
+
+        // Fan out to every enabled destination. Treat the worker as successful if
+        // *at least one* dispatch succeeds — partial delivery still beats holding
+        // an OTP back from the user.
+        var anySucceeded = false
+        val failureLabels = mutableListOf<String>()
+
+        destinations.forEach { destination ->
+            val ok = smsSender.sendSms(destination.phoneNumber, messageBody)
+            if (ok) {
+                anySucceeded = true
+                Timber.i(
+                    "ForwardingWorker: delivered event %s to %s (%s)",
+                    eventId, destination.phoneNumber, destination.label.ifBlank { "no label" },
+                )
+            } else {
+                failureLabels += destination.label.ifBlank { destination.phoneNumber }
+                Timber.w(
+                    "ForwardingWorker: dispatch failed for event %s → %s",
+                    eventId, destination.phoneNumber,
+                )
+            }
+        }
 
         // Stable notification ID for this event — same across retries so Android
         // replaces the failure notification in-place rather than stacking new ones.
         val failureNotificationId = eventId.hashCode()
 
-        return if (success) {
-            // Dismiss any lingering failure/retry notification from earlier attempts.
+        return if (anySucceeded) {
             forwardingNotifier.cancelFailureNotification(failureNotificationId)
-
             forwardingRepository.updateDestinations(eventId, listOf(DestinationType.SMS))
             forwardingRepository.updateStatus(eventId, ForwardingStatus.FORWARDED, null)
+
+            // Use the first delivered destination as the notification subtitle, or
+            // a count if several were targeted.
+            val notifyTarget = when (destinations.size) {
+                1    -> destinations.first().phoneNumber
+                else -> "${destinations.size} destinations"
+            }
             forwardingNotifier.notifyForwarded(
                 sender      = sender,
-                destination = destinationNumber,
+                destination = notifyTarget,
             )
             Result.success()
         } else {
-            // runAttemptCount is 0-indexed: 0 = first try, 1 = first retry, …
             val attemptNumber = runAttemptCount + 1
             val isFinalAttempt = runAttemptCount >= MAX_ATTEMPTS - 1
+            val errorDetail = if (failureLabels.size == 1) {
+                "SMS dispatch failed to ${failureLabels.first()}"
+            } else {
+                "SMS dispatch failed to ${failureLabels.size} destinations"
+            }
 
             if (isFinalAttempt) {
                 Timber.w("ForwardingWorker: all $MAX_ATTEMPTS attempts exhausted for event $eventId")
                 forwardingRepository.updateStatus(
                     eventId,
                     ForwardingStatus.FAILED,
-                    "SMS dispatch failed after $MAX_ATTEMPTS attempts",
+                    "$errorDetail after $MAX_ATTEMPTS attempts",
                 )
                 forwardingNotifier.notifySendFailed(
                     sender         = sender,

@@ -5,10 +5,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.samsung.android.otpforwarder.feature.destinations.AddEmailDestinationScreen
+import com.samsung.android.otpforwarder.feature.destinations.AddPhoneDestinationScreen
+import com.samsung.android.otpforwarder.feature.destinations.DestinationsScreen
 import com.samsung.android.otpforwarder.feature.home.HomeScreen
 import com.samsung.android.otpforwarder.feature.logs.LogsScreen
 import com.samsung.android.otpforwarder.feature.onboarding.OnboardingScreen
-import com.samsung.android.otpforwarder.feature.rules.RulesScreen
 import com.samsung.android.otpforwarder.feature.settings.SettingsScreen
 
 @Composable
@@ -43,8 +45,23 @@ fun OtpNavGraph(
             LogsScreen()
         }
 
-        composable(AppDestination.Rules.route) {
-            RulesScreen()
+        composable(AppDestination.Destinations.route) {
+            DestinationsScreen(
+                onAddPhone = { navController.navigate(AppDestination.AddPhoneDestination.route) },
+                onAddEmail = { navController.navigate(AppDestination.AddEmailDestination.route) },
+            )
+        }
+
+        composable(AppDestination.AddPhoneDestination.route) {
+            AddPhoneDestinationScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(AppDestination.AddEmailDestination.route) {
+            AddEmailDestinationScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
 
         composable(AppDestination.Settings.route) {

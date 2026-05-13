@@ -42,7 +42,7 @@ include(":core:sms")
 // Feature modules
 include(":feature:onboarding")
 include(":feature:home")
-include(":feature:rules")
+include(":feature:destinations")
 include(":feature:logs")
 include(":feature:settings")
 include(":feature:lock")

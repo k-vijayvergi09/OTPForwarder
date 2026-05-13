@@ -36,22 +36,24 @@ import com.samsung.android.otpforwarder.navigation.BottomNavTab
 import com.samsung.android.otpforwarder.navigation.OtpNavGraph
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
+import timber.log.Timber
 import javax.inject.Inject
-
 private const val TAG = "OtpForwarderMain"
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject lateinit var incomingSmsMonitor: IncomingSmsMonitor
-    @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject
+    lateinit var incomingSmsMonitor: IncomingSmsMonitor
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "MainActivity.onCreate")
         enableEdgeToEdge()
         val navigateTo = intent?.getStringExtra("EXTRA_NAVIGATE_TO")
-        
+
         setContent {
             OtpForwarderTheme {
                 OtpForwarderApp(
@@ -91,49 +93,48 @@ private fun OtpForwarderApp(
     // Hold off composing NavHost until we know the start destination.
     if (startDestination == null) return
 
-    val navController      = rememberNavController()
-    val navBackStackEntry  by navController.currentBackStackEntryAsState()
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val snackbarHostState  = remember { SnackbarHostState() }
+    val snackbarHostState = remember { SnackbarHostState() }
     var lastHandledSequence by remember { mutableStateOf(0L) }
 
     val bottomBarRoutes = BottomNavTab.entries.map { it.destination.route }.toSet()
-    val showBottomBar   = currentDestination?.route in bottomBarRoutes
+    val showBottomBar = currentDestination?.route in bottomBarRoutes
 
     // Surface incoming-SMS observations as a brief snackbar for end-to-end verification.
     LaunchedEffect(incomingSmsMonitor) {
-        Log.i(TAG, "Starting IncomingSmsMonitor collection")
+        Timber.tag(TAG).i("Starting IncomingSmsMonitor collection")
         incomingSmsMonitor.latestObservation.collect { observation ->
             if (observation == null) {
-                Log.i(TAG, "Observation is null, waiting for SMS")
+                Timber.tag(TAG).i("Observation is null, waiting for SMS")
                 return@collect
             }
-            Log.i(
-                TAG,
+            Timber.tag(TAG).i(
                 "Observed sequence=${observation.sequence} sender=${observation.message.sender} " +
-                    "lastHandled=$lastHandledSequence",
+                        "lastHandled=$lastHandledSequence"
             )
             if (observation.sequence <= lastHandledSequence) {
-                Log.i(TAG, "Skipping already handled sequence=${observation.sequence}")
+                Timber.tag(TAG).i("Skipping already handled sequence=${observation.sequence}")
                 return@collect
             }
             lastHandledSequence = observation.sequence
-            Log.i(TAG, "Showing snackbar for sender=${observation.message.sender}")
+            Timber.tag(TAG).i("Showing snackbar for sender=${observation.message.sender}")
             snackbarHostState.showSnackbar(
                 message = "Incoming SMS from ${observation.message.sender.ifBlank { "Unknown sender" }}",
             )
-            Log.i(TAG, "Snackbar finished for sequence=${observation.sequence}")
+            Timber.tag(TAG).i("Snackbar finished for sequence=${observation.sequence}")
         }
     }
 
     Scaffold(
-        modifier     = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
-                enter   = slideInVertically(initialOffsetY = { it }),
-                exit    = slideOutVertically(targetOffsetY = { it }),
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it }),
             ) {
                 NavigationBar {
                     BottomNavTab.entries.forEach { tab ->
@@ -143,16 +144,16 @@ private fun OtpForwarderApp(
 
                         NavigationBarItem(
                             selected = selected,
-                            onClick  = {
+                            onClick = {
                                 navController.navigate(tab.destination.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
                                     launchSingleTop = true
-                                    restoreState    = true
+                                    restoreState = true
                                 }
                             },
-                            icon  = { Icon(tab.icon, contentDescription = tab.label) },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
                             label = { Text(tab.label) },
                         )
                     }
@@ -161,9 +162,9 @@ private fun OtpForwarderApp(
         },
     ) { innerPadding ->
         OtpNavGraph(
-            navController    = navController,
+            navController = navController,
             startDestination = startDestination!!,
-            modifier         = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding),
         )
     }
 }

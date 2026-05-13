@@ -36,12 +36,12 @@
             <option value="$PROJECT_DIR$/core/security" />
             <option value="$PROJECT_DIR$/core/sms" />
             <option value="$PROJECT_DIR$/feature" />
+            <option value="$PROJECT_DIR$/feature/destinations" />
             <option value="$PROJECT_DIR$/feature/email" />
             <option value="$PROJECT_DIR$/feature/home" />
             <option value="$PROJECT_DIR$/feature/lock" />
             <option value="$PROJECT_DIR$/feature/logs" />
             <option value="$PROJECT_DIR$/feature/onboarding" />
-            <option value="$PROJECT_DIR$/feature/rules" />
             <option value="$PROJECT_DIR$/feature/settings" />
           </set>
         </option>

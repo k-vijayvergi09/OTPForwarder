@@ -46,7 +46,7 @@ dependencies {
 
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:home"))
-    implementation(project(":feature:rules"))
+    implementation(project(":feature:destinations"))
     implementation(project(":feature:logs"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:lock"))

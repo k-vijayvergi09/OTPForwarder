@@ -1,17 +1,18 @@
 package com.samsung.android.otpforwarder.feature.settings
 
-import com.samsung.android.otpforwarder.core.model.DestinationType
-
 // ── State ─────────────────────────────────────────────────────────────────────
 
+/**
+ * UI state for the Settings screen.
+ *
+ * As of the Rules → Destinations migration, the Settings screen no longer manages
+ * phone/email destinations — those live in `:feature:destinations`. Settings is
+ * now strictly for cross-cutting preferences (master toggle, delay, security,
+ * notifications, config export/import).
+ */
 data class SettingsState(
     val isForwardingEnabled: Boolean = true,
     val forwardingDelaySeconds: Int = 0,
-    val defaultDestinations: Set<DestinationType> = setOf(DestinationType.EMAIL),
-    val defaultPhoneNumber: String = "",
-    val defaultEmailAddress: String = "",
-    val showPhoneNumberDialog: Boolean = false,
-    val showEmailDialog: Boolean = false,
     val isBiometricLockEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
     val isLoading: Boolean = true,
@@ -20,20 +21,13 @@ data class SettingsState(
 // ── Intents ───────────────────────────────────────────────────────────────────
 
 sealed interface SettingsIntent {
-    data object ToggleForwarding                             : SettingsIntent
-    data class  SetForwardingDelay(val seconds: Int)         : SettingsIntent
-    data class  ToggleDestination(val type: DestinationType) : SettingsIntent
-    data object ToggleBiometricLock                          : SettingsIntent
-    data object ToggleNotifications                          : SettingsIntent
-    data object ShowPhoneNumberDialog                        : SettingsIntent
-    data object HidePhoneNumberDialog                        : SettingsIntent
-    data class  SavePhoneNumber(val number: String)          : SettingsIntent
-    data object ShowEmailDialog                              : SettingsIntent
-    data object HideEmailDialog                              : SettingsIntent
-    data class  SaveEmail(val email: String)                 : SettingsIntent
-    data object ExportConfig                                 : SettingsIntent
-    data object ImportConfig                                 : SettingsIntent
-    data object NavigateBack                                 : SettingsIntent
+    data object ToggleForwarding                     : SettingsIntent
+    data class  SetForwardingDelay(val seconds: Int) : SettingsIntent
+    data object ToggleBiometricLock                  : SettingsIntent
+    data object ToggleNotifications                  : SettingsIntent
+    data object ExportConfig                         : SettingsIntent
+    data object ImportConfig                         : SettingsIntent
+    data object NavigateBack                         : SettingsIntent
 }
 
 // ── Side effects ──────────────────────────────────────────────────────────────

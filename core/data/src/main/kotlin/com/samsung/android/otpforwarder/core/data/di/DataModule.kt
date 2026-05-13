@@ -1,10 +1,14 @@
 package com.samsung.android.otpforwarder.core.data.di
 
 import com.samsung.android.otpforwarder.core.common.coroutines.ApplicationScope
+import com.samsung.android.otpforwarder.core.database.RoomEmailDestinationRepository
 import com.samsung.android.otpforwarder.core.database.RoomForwardingRepository
+import com.samsung.android.otpforwarder.core.database.RoomSmsDestinationRepository
 import com.samsung.android.otpforwarder.core.datastore.DataStoreSettingsRepository
+import com.samsung.android.otpforwarder.core.domain.EmailDestinationRepository
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
+import com.samsung.android.otpforwarder.core.domain.SmsDestinationRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -29,6 +33,18 @@ abstract class DataBindModule {
     abstract fun bindSettingsRepository(
         impl: DataStoreSettingsRepository,
     ): SettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSmsDestinationRepository(
+        impl: RoomSmsDestinationRepository,
+    ): SmsDestinationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindEmailDestinationRepository(
+        impl: RoomEmailDestinationRepository,
+    ): EmailDestinationRepository
 }
 
 @Module

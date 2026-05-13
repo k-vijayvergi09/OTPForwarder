@@ -3,7 +3,9 @@ package com.samsung.android.otpforwarder.core.database.di
 import android.content.Context
 import androidx.room.Room
 import com.samsung.android.otpforwarder.core.database.OtpDatabase
+import com.samsung.android.otpforwarder.core.database.dao.EmailDestinationDao
 import com.samsung.android.otpforwarder.core.database.dao.ForwardingRecordDao
+import com.samsung.android.otpforwarder.core.database.dao.SmsDestinationDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,9 +25,21 @@ object DatabaseModule {
         context,
         OtpDatabase::class.java,
         "otp_forwarder.db",
-    ).build()
+    )
+        // Acceptable while we are pre-release. Replace with explicit Migration objects
+        // before the first Play Store / direct-APK build.
+        .fallbackToDestructiveMigration()
+        .build()
 
     @Provides
     fun provideForwardingRecordDao(db: OtpDatabase): ForwardingRecordDao =
         db.forwardingRecordDao()
+
+    @Provides
+    fun provideSmsDestinationDao(db: OtpDatabase): SmsDestinationDao =
+        db.smsDestinationDao()
+
+    @Provides
+    fun provideEmailDestinationDao(db: OtpDatabase): EmailDestinationDao =
+        db.emailDestinationDao()
 }

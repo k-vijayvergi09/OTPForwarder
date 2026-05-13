@@ -8,9 +8,10 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.workDataOf
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
-import com.samsung.android.otpforwarder.core.model.DestinationType
+import com.samsung.android.otpforwarder.core.domain.SmsDestinationRepository
 import com.samsung.android.otpforwarder.core.model.ForwardingRecord
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
+import com.samsung.android.otpforwarder.core.model.SmsDestination
 import com.samsung.android.otpforwarder.core.sms.ForwardingWorker
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -55,9 +56,10 @@ class ForwardingWorkerTest {
     // HiltWorkerFactory is @Singleton and directly injectable — it wires the
     // @HiltWorker / @AssistedInject constructor when TestListenableWorkerBuilder
     // calls WorkerFactory.createWorker().
-    @Inject lateinit var workerFactory:        HiltWorkerFactory
-    @Inject lateinit var forwardingRepository: ForwardingRepository
-    @Inject lateinit var settingsRepository:   SettingsRepository
+    @Inject lateinit var workerFactory:         HiltWorkerFactory
+    @Inject lateinit var forwardingRepository:  ForwardingRepository
+    @Inject lateinit var settingsRepository:    SettingsRepository
+    @Inject lateinit var smsDestinationRepository: SmsDestinationRepository
 
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
@@ -121,54 +123,52 @@ class ForwardingWorkerTest {
     }
 
     @Test
-    fun doWork_smsDestinationNotEnabled_returnsSuccess() = runBlocking {
-        // Only EMAIL destination is enabled, not SMS
-        settingsRepository.updateSettings {
-            it.copy(
-                isForwardingEnabled  = true,
-                defaultDestinations  = listOf(DestinationType.EMAIL),
-            )
-        }
+    fun doWork_noSmsDestinationsConfigured_returnsSuccess() = runBlocking {
+        // No SMS destinations exist in the repository — worker should skip and succeed.
+        // (No destinations is not a retryable error; the user just hasn't added any yet.)
+        settingsRepository.updateSettings { it.copy(isForwardingEnabled = true) }
 
         val eventId = UUID.randomUUID().toString()
         insertPendingRecord(eventId)
 
         val result = buildWorker(eventId).doWork()
 
-        // Skipping SMS forwarding is not an error — email forwarding may run elsewhere
+        // Skipping forwarding when no destinations exist is not an error.
         assertEquals(ListenableWorker.Result.success(), result)
     }
 
     @Test
-    fun doWork_smsEnabledButNoNumberConfigured_returnsFailure() = runBlocking {
-        settingsRepository.updateSettings {
-            it.copy(
-                isForwardingEnabled  = true,
-                defaultDestinations  = listOf(DestinationType.SMS),
-                defaultPhoneNumber   = "",  // no number!
+    fun doWork_smsDestinationDisabled_returnsSuccess() = runBlocking {
+        // A destination exists but is disabled — worker should skip and succeed.
+        settingsRepository.updateSettings { it.copy(isForwardingEnabled = true) }
+        smsDestinationRepository.upsert(
+            SmsDestination(
+                id          = UUID.randomUUID().toString(),
+                label       = "Test",
+                phoneNumber = "+15555215554",
+                isEnabled   = false, // disabled!
             )
-        }
+        )
 
         val eventId = UUID.randomUUID().toString()
         insertPendingRecord(eventId)
 
         val result = buildWorker(eventId).doWork()
 
-        assertEquals(ListenableWorker.Result.failure(), result)
-
-        val record = forwardingRepository.records.value.find { it.id == eventId }
-        assertEquals(ForwardingStatus.FAILED, record?.status)
+        assertEquals(ListenableWorker.Result.success(), result)
     }
 
     @Test
     fun doWork_recordNotFound_returnsFailure() = runBlocking {
-        settingsRepository.updateSettings {
-            it.copy(
-                isForwardingEnabled = true,
-                defaultDestinations = listOf(DestinationType.SMS),
-                defaultPhoneNumber  = "+15555215554",
+        settingsRepository.updateSettings { it.copy(isForwardingEnabled = true) }
+        smsDestinationRepository.upsert(
+            SmsDestination(
+                id          = UUID.randomUUID().toString(),
+                label       = "Test",
+                phoneNumber = "+15555215554",
+                isEnabled   = true,
             )
-        }
+        )
 
         // Intentionally do NOT insert a record — worker should fail gracefully
         val result = buildWorker("nonexistent-event-id").doWork()
@@ -179,13 +179,15 @@ class ForwardingWorkerTest {
     fun doWork_smsEnabledWithNumber_sendSmsPermissionDenied_returnsFailure() = runBlocking {
         // In the test environment SEND_SMS is not granted.
         // SmsSender.sendSms() returns false → worker returns failure.
-        settingsRepository.updateSettings {
-            it.copy(
-                isForwardingEnabled = true,
-                defaultDestinations = listOf(DestinationType.SMS),
-                defaultPhoneNumber  = "+15555215554",
+        settingsRepository.updateSettings { it.copy(isForwardingEnabled = true) }
+        smsDestinationRepository.upsert(
+            SmsDestination(
+                id          = UUID.randomUUID().toString(),
+                label       = "Test",
+                phoneNumber = "+15555215554",
+                isEnabled   = true,
             )
-        }
+        )
 
         val eventId = UUID.randomUUID().toString()
         insertPendingRecord(eventId)

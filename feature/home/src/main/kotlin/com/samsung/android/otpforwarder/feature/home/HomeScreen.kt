@@ -94,11 +94,11 @@ internal fun HomeContent(
             item {
                 Spacer(Modifier.height(8.dp))
                 StatusCard(
-                    isEnabled        = state.isForwardingEnabled,
-                    activeRulesCount = state.activeRulesCount,
-                    todayCount       = state.todayCount,
-                    onToggle         = { onIntent(HomeIntent.ToggleForwarding) },
-                    modifier         = Modifier.padding(horizontal = 16.dp),
+                    isEnabled               = state.isForwardingEnabled,
+                    activeDestinationsCount = state.activeDestinationsCount,
+                    todayCount              = state.todayCount,
+                    onToggle                = { onIntent(HomeIntent.ToggleForwarding) },
+                    modifier                = Modifier.padding(horizontal = 16.dp),
                 )
                 Spacer(Modifier.height(24.dp))
             }
@@ -170,7 +170,7 @@ private val BrandBlue = Color(0xFF0A1F6B)
 @Composable
 private fun StatusCard(
     isEnabled: Boolean,
-    activeRulesCount: Int,
+    activeDestinationsCount: Int,
     todayCount: Int,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
@@ -199,7 +199,7 @@ private fun StatusCard(
             )
             Spacer(Modifier.height(4.dp))
             val subtitle = buildString {
-                if (activeRulesCount > 0) append("$activeRulesCount rules watching · ")
+                if (activeDestinationsCount > 0) append("$activeDestinationsCount destinations · ")
                 append("$todayCount OTPs forwarded today")
             }
             Text(
@@ -417,9 +417,9 @@ private fun HomePreview() {
     OtpForwarderTheme {
         HomeContent(
             state = HomeState(
-                isForwardingEnabled = true,
-                activeRulesCount    = 3,
-                todayCount          = 24,
+                isForwardingEnabled     = true,
+                activeDestinationsCount = 3,
+                todayCount              = 24,
                 recentItems = listOf(
                     OtpRowUiItem("1", "HDFC Bank",  "842913", "Forwarded · SMS + Email", ForwardingStatus.FORWARDED,    "2m ago"),
                     OtpRowUiItem("2", "Amazon",     "4127",   "Retry queued",            ForwardingStatus.RETRY_QUEUED, "18m ago"),
