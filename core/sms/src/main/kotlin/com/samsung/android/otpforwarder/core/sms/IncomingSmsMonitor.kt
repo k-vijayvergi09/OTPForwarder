@@ -1,10 +1,10 @@
 package com.samsung.android.otpforwarder.core.sms
 
-import android.util.Log
 import com.samsung.android.otpforwarder.core.model.SmsMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,7 +21,7 @@ class IncomingSmsMonitor @Inject constructor() {
 
     fun record(message: SmsMessage) {
         val nextSequence = (_latestObservation.value?.sequence ?: 0L) + 1L
-        Log.i(TAG, "Recording SMS sequence=$nextSequence sender=${message.sender}")
+        Timber.tag(TAG).i("Recording SMS sequence=$nextSequence sender=${message.sender}")
         _latestObservation.value = IncomingSmsObservation(
             sequence = nextSequence,
             message = message,

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Fingerprint
@@ -50,6 +51,7 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit = {},
+    onNavigateToGmailSetup: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state = viewModel.collectAsState().value
@@ -57,6 +59,7 @@ fun SettingsScreen(
     viewModel.collectSideEffect { effect ->
         when (effect) {
             SettingsSideEffect.GoBack                 -> onNavigateBack()
+            SettingsSideEffect.NavigateToGmailSetup   -> onNavigateToGmailSetup()
             SettingsSideEffect.LaunchExportFilePicker -> { /* TODO M5: file picker */ }
             SettingsSideEffect.LaunchImportFilePicker -> { /* TODO M5: file picker */ }
             is SettingsSideEffect.ShowSnackbar        -> { /* TODO M5: snackbar host */ }
@@ -98,6 +101,19 @@ internal fun SettingsContent(
                     DelayRow(
                         delay    = state.forwardingDelaySeconds,
                         onChange = { onIntent(SettingsIntent.SetForwardingDelay(it)) },
+                    )
+                }
+            }
+
+            // ── Email ─────────────────────────────────────────────────────────
+            item {
+                SectionHeader("Email")
+                SettingsGroup {
+                    ActionRow(
+                        icon     = Icons.Rounded.Email,
+                        title    = "Gmail account",
+                        subtitle = "Configure the Gmail account used to forward OTPs",
+                        onClick  = { onIntent(SettingsIntent.ConfigureGmail) },
                     )
                 }
             }

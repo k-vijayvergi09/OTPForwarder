@@ -39,32 +39,32 @@ class SmsReceiver : BroadcastReceiver() {
         // This line fires even before Hilt injects fields — if you see it in logcat
         // the receiver IS being called. If you don't, the broadcast never reached us
         // (wrong permission state or OEM blocking).
-        Log.i(TAG, "onReceive action=${intent.action}")
+        Timber.tag(TAG).i("onReceive action=${intent.action}")
 
         // Guard: RECEIVE_SMS must be granted at runtime (Android 6+).
         val permissionState = ContextCompat.checkSelfPermission(
             context, Manifest.permission.RECEIVE_SMS
         )
         if (permissionState != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "RECEIVE_SMS not granted — ignoring broadcast (grant it via app Settings)")
+            Timber.tag(TAG).i("RECEIVE_SMS not granted — ignoring broadcast (grant it via app Settings)")
             return
         }
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
-            Log.i(TAG, "Ignoring unexpected action=${intent.action}")
+            Timber.tag(TAG).i("Ignoring unexpected action=${intent.action}")
             Timber.w("SmsReceiver: unexpected action %s - ignoring", intent.action)
             return
         }
 
         val messages = smsParser.parse(intent)
-        Log.i(TAG, "Parsed message count=${messages.size}")
+        Timber.tag(TAG).i("Parsed message count=${messages.size}")
         if (messages.isEmpty()) {
-            Log.i(TAG, "No parseable SMS found in broadcast")
+            Timber.tag(TAG).i("No parseable SMS found in broadcast")
             Timber.d("SmsReceiver: no parseable SMS in broadcast")
             return
         }
 
         for (message in messages) {
-            Log.i(TAG, "Received SMS sender=${message.sender} bodyLength=${message.body.length}")
+            Timber.tag(TAG).i("Received SMS sender=${message.sender} bodyLength=${message.body.length}")
             Timber.d(
                 "SmsReceiver: received SMS from=%s length=%d",
                 message.sender,
@@ -73,11 +73,11 @@ class SmsReceiver : BroadcastReceiver() {
 
             // Always record the raw message so the UI can react (snackbar, etc.)
             incomingSmsMonitor.record(message)
-            Log.i(TAG, "Recorded SMS in IncomingSmsMonitor sender=${message.sender}")
+            Timber.tag(TAG).i("Recorded SMS in IncomingSmsMonitor sender=${message.sender}")
 
             val otpEvent = detectOtpUseCase(message)
             if (otpEvent == null) {
-                Log.i(TAG, "No OTP detected in message from ${message.sender}, skipping forwarding")
+                Timber.tag(TAG).i("No OTP detected in message from ${message.sender}, skipping forwarding")
                 continue
             }
 
@@ -88,9 +88,9 @@ class SmsReceiver : BroadcastReceiver() {
                 sender  = message.sender,
                 preview = message.body.take(120),
             )
-            Log.i(TAG, "Requested notification for sender=${message.sender}")
+            Timber.tag(TAG).i("Requested notification for sender=${message.sender}")
 
-            Log.i(TAG, "Forwarding SMS sender=${otpEvent.sender}")
+            Timber.tag(TAG).i("Forwarding SMS sender=${otpEvent.sender}")
             Timber.i(
                 "SmsReceiver: forwarding code=%s sender=%s",
                 otpEvent.otpCode,
@@ -99,14 +99,14 @@ class SmsReceiver : BroadcastReceiver() {
 
             // Persist the detection so the Logs/Home screens update immediately.
             forwardingRepository.recordDetectedOtp(otpEvent)
-            Log.i(TAG, "Persisted event id=${otpEvent.id}")
+            Timber.tag(TAG).i("Persisted event id=${otpEvent.id}")
 
             // Broadcast to ForwardingDispatcher (ApplicationScope collector) which
             // will enqueue ForwardingWorker. Using tryEmit here is safe because
             // SmsEventBus has a 64-event buffer and ForwardingDispatcher is always
             // running while the process is alive.
             val emitted = eventBus.emit(otpEvent)
-            Log.i(TAG, "EventBus emit emitted=$emitted for id=${otpEvent.id}")
+            Timber.tag(TAG).i("EventBus emit emitted=$emitted for id=${otpEvent.id}")
             if (!emitted) {
                 Timber.w("SmsReceiver: eventBus buffer full — event dropped id=%s", otpEvent.id)
             }

@@ -11,6 +11,11 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    implementation(project(":core:domain"))
+
+    // SMTP (Android-safe JavaMail — no java.desktop/AWT dependencies)
+    implementation(libs.android.mail)
+    implementation(libs.android.activation)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
@@ -22,6 +27,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.datetime)
+    implementation(libs.timber)
 
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -24,6 +24,21 @@ android {
         buildConfig = true
     }
 
+    packaging {
+        resources {
+            // android-mail and jakarta.inject ship duplicate META-INF licence files.
+            // These are purely informational and safe to exclude.
+            excludes += setOf(
+                "META-INF/NOTICE.md",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+            )
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

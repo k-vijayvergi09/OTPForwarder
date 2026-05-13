@@ -62,6 +62,10 @@ class SettingsViewModel @Inject constructor(
 
         // ── Navigation ────────────────────────────────────────────────────────
 
+        SettingsIntent.ConfigureGmail -> intent {
+            postSideEffect(SettingsSideEffect.NavigateToGmailSetup)
+        }
+
         SettingsIntent.NavigateBack -> intent {
             postSideEffect(SettingsSideEffect.GoBack)
         }

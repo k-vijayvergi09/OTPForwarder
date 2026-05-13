@@ -60,6 +60,9 @@ vico = "2.0.0-beta.3"
 # Image loading
 coil = "3.0.4"
 
+# Email / SMTP (Android-specific JavaMail fork — no java.desktop dependency)
+androidMail = "1.6.7"
+
 # Logging / debug
 timber = "5.0.1"
 leakCanary = "2.14"
@@ -161,6 +164,10 @@ vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", ve
 # Image loading
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+
+# Email / SMTP
+android-mail = { group = "com.sun.mail", name = "android-mail", version.ref = "androidMail" }
+android-activation = { group = "com.sun.mail", name = "android-activation", version.ref = "androidMail" }
 
 # Logging / debug
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }

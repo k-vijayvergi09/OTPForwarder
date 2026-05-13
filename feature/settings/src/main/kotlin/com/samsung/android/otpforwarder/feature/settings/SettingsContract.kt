@@ -27,6 +27,7 @@ sealed interface SettingsIntent {
     data object ToggleNotifications                  : SettingsIntent
     data object ExportConfig                         : SettingsIntent
     data object ImportConfig                         : SettingsIntent
+    data object ConfigureGmail                       : SettingsIntent
     data object NavigateBack                         : SettingsIntent
 }
 
@@ -34,6 +35,7 @@ sealed interface SettingsIntent {
 
 sealed interface SettingsSideEffect {
     data object GoBack                           : SettingsSideEffect
+    data object NavigateToGmailSetup             : SettingsSideEffect
     data object LaunchExportFilePicker           : SettingsSideEffect
     data object LaunchImportFilePicker           : SettingsSideEffect
     data class  ShowSnackbar(val message: String): SettingsSideEffect

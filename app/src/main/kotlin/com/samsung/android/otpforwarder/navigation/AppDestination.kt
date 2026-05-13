@@ -24,6 +24,7 @@ sealed class AppDestination(val route: String) {
     data object AddPhoneDestination  : AppDestination("destinations/add-phone")
     data object AddEmailDestination  : AppDestination("destinations/add-email")
     data object Settings             : AppDestination("settings")
+    data object GmailSetup           : AppDestination("settings/gmail-setup")
 }
 
 /**
