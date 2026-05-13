@@ -15,6 +15,8 @@ data class EmailSetupState(
     val isConfigured: Boolean = false,
     /** Non-null when a connection test has completed — shown as a status banner. */
     val testResult: TestResult? = null,
+    /** True when the "What's an App Password?" info bottom sheet is open. */
+    val showAppPasswordInfo: Boolean = false,
 )
 
 sealed interface TestResult {
@@ -32,6 +34,8 @@ sealed interface EmailSetupIntent {
     data object ClearCredentials                     : EmailSetupIntent
     data object NavigateBack                         : EmailSetupIntent
     data object DismissTestResult                    : EmailSetupIntent
+    data object ShowAppPasswordInfo                  : EmailSetupIntent
+    data object DismissAppPasswordInfo               : EmailSetupIntent
 }
 
 // ── Side effects ──────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,29 +25,37 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -61,6 +70,7 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmailScreen(
     onNavigateBack: () -> Unit = {},
@@ -83,6 +93,13 @@ fun EmailScreen(
             modifier  = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(16.dp),
+        )
+    }
+
+    // ── App Password info bottom sheet ────────────────────────────────────────
+    if (state.showAppPasswordInfo) {
+        AppPasswordInfoSheet(
+            onDismiss = { viewModel.onIntent(EmailSetupIntent.DismissAppPasswordInfo) },
         )
     }
 }
@@ -171,7 +188,7 @@ internal fun EmailSetupContent(
             )
 
             Spacer(Modifier.height(8.dp))
-            AppPasswordHint()
+            AppPasswordHint(onLearnMore = { onIntent(EmailSetupIntent.ShowAppPasswordInfo) })
             Spacer(Modifier.height(24.dp))
 
             HorizontalDivider()
@@ -346,24 +363,209 @@ private fun TestResultBanner(result: TestResult) {
 // ── App Password hint ─────────────────────────────────────────────────────────
 
 @Composable
-private fun AppPasswordHint() {
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        verticalAlignment     = Alignment.Top,
-        horizontalArrangement = Arrangement.Start,
+private fun AppPasswordHint(onLearnMore: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Static hint row
+        Row(
+            modifier          = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector        = Icons.Rounded.Info,
+                contentDescription = null,
+                tint               = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier           = Modifier.size(14.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text  = "Use an App Password, not your Google account password.",
+                style = MaterialTheme.typography.labelSmall.copy(lineHeight = 17.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // Tappable "What's an App Password?" pill
+        Surface(
+            shape  = RoundedCornerShape(50),
+            color  = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .clickable(onClick = onLearnMore),
+        ) {
+            Row(
+                modifier          = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector        = Icons.Rounded.HelpOutline,
+                    contentDescription = null,
+                    tint               = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier           = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text  = "What's an App Password?",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Spacer(Modifier.width(2.dp))
+                Icon(
+                    imageVector        = Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint               = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier           = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+// ── App Password info bottom sheet ────────────────────────────────────────────
+
+private val appPasswordSteps = listOf(
+    "Open **myaccount.google.com** in a browser",
+    "Tap **Security** in the left sidebar",
+    "Under \"How you sign in to Google\", tap **2-Step Verification** and make sure it is **ON**",
+    "Scroll to the bottom and tap **App Passwords**",
+    "Enter a name like **\"OTP Forwarder\"** and tap **Create**",
+    "Copy the **16-character password** shown and paste it in the field above",
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppPasswordInfoSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val uriHandler = LocalUriHandler.current
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState       = sheetState,
     ) {
-        Icon(
-            imageVector        = Icons.Rounded.Info,
-            contentDescription = null,
-            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier           = Modifier.size(14.dp),
-        )
-        Spacer(Modifier.width(6.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 40.dp),
+        ) {
+            // Title
+            Text(
+                text  = "What is an App Password?",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            // Explanation
+            Text(
+                text  = "An App Password is a 16-character code that lets an app access your Google account " +
+                        "without using your main Google password. It is safer because you can revoke it " +
+                        "at any time without changing your main password.",
+                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text  = "HOW TO GENERATE ONE",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight   = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                ),
+                color = MaterialTheme.colorScheme.primary,
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // Numbered steps
+            appPasswordSteps.forEachIndexed { index, step ->
+                AppPasswordStep(number = index + 1, text = step)
+                if (index < appPasswordSteps.lastIndex) Spacer(Modifier.height(12.dp))
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Example chip
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Row(
+                    modifier          = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text  = "Example: ",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text  = "abcd  efgh  ijkl  mnop",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // Open settings button
+            OutlinedButton(
+                onClick  = { uriHandler.openUri("https://myaccount.google.com/apppasswords") },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Open Google Account Settings →")
+            }
+        }
+    }
+}
+
+// ── Step row ──────────────────────────────────────────────────────────────────
+
+/**
+ * A single numbered step in the App Password guide.
+ * Bold segments inside [text] are wrapped in double-asterisks; this composable
+ * renders them as-is in plain text (Android does not have AnnotatedString from
+ * markdown out of the box, so we strip the markers and bold the whole sentence
+ * for simplicity — good enough for these short instructional strings).
+ */
+@Composable
+private fun AppPasswordStep(number: Int, text: String) {
+    Row(
+        modifier          = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // Circular badge
+        Box(
+            modifier         = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text  = number.toString(),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+
+        Spacer(Modifier.width(12.dp))
+
         Text(
-            text  = "Use an App Password, not your Google account password. " +
-                    "Generate one at myaccount.google.com → Security → App Passwords.",
-            style = MaterialTheme.typography.labelSmall.copy(lineHeight = 17.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text     = text.replace("**", ""),
+            style    = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+            color    = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
         )
     }
 }

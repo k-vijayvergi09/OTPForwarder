@@ -108,5 +108,15 @@ class EmailSetupViewModel @Inject constructor(
         EmailSetupIntent.NavigateBack -> intent {
             postSideEffect(EmailSetupSideEffect.GoBack)
         }
+
+        // ── App Password info sheet ───────────────────────────────────────────
+
+        EmailSetupIntent.ShowAppPasswordInfo -> intent {
+            reduce { state.copy(showAppPasswordInfo = true) }
+        }
+
+        EmailSetupIntent.DismissAppPasswordInfo -> intent {
+            reduce { state.copy(showAppPasswordInfo = false) }
+        }
     }
 }
