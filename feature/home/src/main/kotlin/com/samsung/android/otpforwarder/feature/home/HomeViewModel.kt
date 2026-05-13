@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.samsung.android.otpforwarder.core.domain.EmailDestinationRepository
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
+import com.samsung.android.otpforwarder.core.domain.SettingsRepository
 import com.samsung.android.otpforwarder.core.domain.SmsDestinationRepository
 import com.samsung.android.otpforwarder.core.model.DestinationType
 import com.samsung.android.otpforwarder.core.model.ForwardingRecord
@@ -28,6 +29,7 @@ class HomeViewModel @Inject constructor(
     private val dispatcher: ForwardingDispatcher,
     private val smsDestinationRepository: SmsDestinationRepository,
     private val emailDestinationRepository: EmailDestinationRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel(), ContainerHost<HomeState, HomeSideEffect> {
 
     override val container = container<HomeState, HomeSideEffect>(HomeState(isLoading = true))
@@ -39,6 +41,14 @@ class HomeViewModel @Inject constructor(
     // ── Observation ───────────────────────────────────────────────────────────
 
     private fun observeData() {
+        // Observe the persisted forwarding toggle so the Home switch always
+        // reflects the real setting (including changes made in Settings screen).
+        settingsRepository.settings
+            .onEach { appSettings ->
+                intent { reduce { state.copy(isForwardingEnabled = appSettings.isForwardingEnabled) } }
+            }
+            .launchIn(viewModelScope)
+
         combine(
             repository.todayRecords(),
             repository.todayStats(),
@@ -67,7 +77,9 @@ class HomeViewModel @Inject constructor(
 
     fun onIntent(intent: HomeIntent) = when (intent) {
         HomeIntent.ToggleForwarding -> intent {
-            reduce { state.copy(isForwardingEnabled = !state.isForwardingEnabled) }
+            // Write through to SettingsRepository — the observer above will
+            // update the UI state reactively, keeping Home and Settings in sync.
+            settingsRepository.updateSettings { it.copy(isForwardingEnabled = !it.isForwardingEnabled) }
         }
         HomeIntent.NavigateToLogs -> intent { postSideEffect(HomeSideEffect.GoToLogs) }
         HomeIntent.NavigateToSettings -> intent { postSideEffect(HomeSideEffect.GoToSettings) }

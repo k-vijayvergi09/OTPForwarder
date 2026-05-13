@@ -155,7 +155,10 @@ private fun DestinationsList(
             }
         } else {
             items(state.smsDestinations, key = { it.id }) { item ->
-                SwipeToDeleteRow(onDelete = { onIntent(DestinationsIntent.DeleteSms(item.id)) }) {
+                SwipeToDeleteRow(
+                    onDelete = { onIntent(DestinationsIntent.DeleteSms(item.id)) },
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                ) {
                     DestinationRow(
                         icon      = if (item.label.lowercase().contains("office") ||
                                        item.label.lowercase().contains("work"))
@@ -164,7 +167,6 @@ private fun DestinationsList(
                         value     = item.phoneNumber,
                         isEnabled = item.isEnabled,
                         onToggle  = { onIntent(DestinationsIntent.ToggleSms(item.id)) },
-                        modifier  = Modifier.padding(horizontal = 24.dp),
                     )
                 }
                 if (state.smsDestinations.last() != item) {
@@ -195,7 +197,10 @@ private fun DestinationsList(
             }
         } else {
             items(state.emailDestinations, key = { it.id }) { item ->
-                SwipeToDeleteRow(onDelete = { onIntent(DestinationsIntent.DeleteEmail(item.id)) }) {
+                SwipeToDeleteRow(
+                    onDelete = { onIntent(DestinationsIntent.DeleteEmail(item.id)) },
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                ) {
                     DestinationRow(
                         icon      = if (item.label.lowercase().contains("work"))
                                        Icons.Rounded.Work else Icons.Rounded.Email,
@@ -203,7 +208,6 @@ private fun DestinationsList(
                         value     = item.emailAddress,
                         isEnabled = item.isEnabled,
                         onToggle  = { onIntent(DestinationsIntent.ToggleEmail(item.id)) },
-                        modifier  = Modifier.padding(horizontal = 24.dp),
                     )
                 }
                 if (state.emailDestinations.last() != item) {
@@ -403,6 +407,7 @@ private fun DestinationRow(
 @Composable
 private fun SwipeToDeleteRow(
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
@@ -422,6 +427,7 @@ private fun SwipeToDeleteRow(
 
     SwipeToDismissBox(
         state            = dismissState,
+        modifier         = modifier,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
             val color by animateColorAsState(

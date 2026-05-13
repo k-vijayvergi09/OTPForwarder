@@ -62,6 +62,15 @@ class LogsViewModel @Inject constructor(
             repository.updateStatus(intent.id, ForwardingStatus.PENDING, null)
             dispatcher.forceRetry(intent.id)
         }
+        is LogsIntent.SetSearchQuery  -> intent {
+            reduce { state.copy(searchQuery = intent.query) }
+        }
+        LogsIntent.ToggleSearch       -> intent {
+            reduce { state.copy(
+                isSearchActive = !state.isSearchActive,
+                searchQuery    = "",  // clear query whenever the bar is toggled
+            ) }
+        }
     }
 }
 

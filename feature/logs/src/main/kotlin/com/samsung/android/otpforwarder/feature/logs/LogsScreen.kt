@@ -1,5 +1,10 @@
 package com.samsung.android.otpforwarder.feature.logs
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -30,11 +37,18 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -79,7 +94,7 @@ internal fun LogsContent(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding(),
     ) {
-        LogsTopBar()
+        LogsTopBar(state = state, onIntent = onIntent)
 
         state.selectedLog?.let { log ->
             LogDetailDialog(
@@ -88,51 +103,56 @@ internal fun LogsContent(
             )
         }
 
-        if (state.groups.isEmpty() && !state.isLoading) {
-            EmptyLogsState()
-        } else {
-            LazyColumn(
-                modifier            = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    TodaySummaryCard(
-                        forwarded = state.todayForwarded,
-                        failed    = state.todayFailed,
-                        pending   = state.todayPending,
-                        modifier  = Modifier.padding(horizontal = 16.dp),
-                    )
-                    Spacer(Modifier.height(16.dp))
-                }
+        val displayGroups = state.filteredGroups
+        val isSearchWithNoResults = state.searchQuery.isNotBlank() && displayGroups.isEmpty()
 
-                state.groups.forEach { group ->
+        when {
+            isSearchWithNoResults -> NoSearchResults(query = state.searchQuery)
+            displayGroups.isEmpty() && !state.isLoading -> EmptyLogsState()
+            else -> {
+                LazyColumn(
+                    modifier            = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                ) {
                     item {
-                        Text(
-                            text     = group.label,
-                            style    = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight    = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp,
-                            ),
-                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
                         Spacer(Modifier.height(8.dp))
-                    }
-
-                    items(group.items, key = { it.id }) { item ->
-                        LogRowItem(
-                            item     = item,
-                            onIntent = onIntent,
-                            onRetry  = { onIntent(LogsIntent.RetryForwarding(it)) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        TodaySummaryCard(
+                            forwarded = state.todayForwarded,
+                            failed    = state.todayFailed,
+                            pending   = state.todayPending,
+                            modifier  = Modifier.padding(horizontal = 16.dp),
                         )
+                        Spacer(Modifier.height(16.dp))
                     }
 
-                    item { Spacer(Modifier.height(8.dp)) }
-                }
+                    displayGroups.forEach { group ->
+                        item {
+                            Text(
+                                text     = group.label,
+                                style    = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight    = FontWeight.SemiBold,
+                                    letterSpacing = 0.5.sp,
+                                ),
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
 
-                item { Spacer(Modifier.height(16.dp)) }
+                        items(group.items, key = { it.id }) { item ->
+                            LogRowItem(
+                                item     = item,
+                                onIntent = onIntent,
+                                onRetry  = { onIntent(LogsIntent.RetryForwarding(it)) },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+
+                        item { Spacer(Modifier.height(8.dp)) }
+                    }
+
+                    item { Spacer(Modifier.height(16.dp)) }
+                }
             }
         }
     }
@@ -141,24 +161,76 @@ internal fun LogsContent(
 // ── Top app bar ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun LogsTopBar() {
-    Row(
-        modifier          = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun LogsTopBar(
+    state: LogsState,
+    onIntent: (LogsIntent) -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            text  = "Logs",
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = { /* TODO: search */ }) {
-            Icon(Icons.Rounded.Search, contentDescription = "Search")
+        Row(
+            modifier          = Modifier
+                .fillMaxWidth()
+                .padding(start = 24.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text     = "Logs",
+                style    = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+                color    = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            // Search icon — toggles the search bar
+            IconButton(onClick = { onIntent(LogsIntent.ToggleSearch) }) {
+                Icon(
+                    imageVector        = if (state.isSearchActive) Icons.Rounded.Close else Icons.Rounded.Search,
+                    contentDescription = if (state.isSearchActive) "Close search" else "Search",
+                )
+            }
+            IconButton(onClick = { /* TODO: filter */ }) {
+                Icon(Icons.Rounded.FilterList, contentDescription = "Filter")
+            }
         }
-        IconButton(onClick = { /* TODO: filter */ }) {
-            Icon(Icons.Rounded.FilterList, contentDescription = "Filter")
+
+        // Animated search bar that expands below the title row
+        AnimatedVisibility(
+            visible = state.isSearchActive,
+            enter   = expandVertically() + fadeIn(),
+            exit    = shrinkVertically() + fadeOut(),
+        ) {
+            OutlinedTextField(
+                value         = state.searchQuery,
+                onValueChange = { onIntent(LogsIntent.SetSearchQuery(it)) },
+                modifier      = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .focusRequester(focusRequester),
+                placeholder   = { Text("Search sender, OTP, message…") },
+                singleLine    = true,
+                leadingIcon   = {
+                    Icon(Icons.Rounded.Search, contentDescription = null)
+                },
+                trailingIcon  = if (state.searchQuery.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { onIntent(LogsIntent.SetSearchQuery("")) }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Clear")
+                        }
+                    }
+                } else null,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+                shape  = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor   = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                ),
+            )
+
+            // Auto-focus when the bar appears
+            LaunchedEffect(Unit) { focusRequester.requestFocus() }
         }
     }
 }
@@ -336,6 +408,26 @@ private fun EmptyLogsState() {
             Spacer(Modifier.height(8.dp))
             Text(
                 text  = "When an OTP arrives it will appear here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 32.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NoSearchResults(query: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text  = "No results for \"$query\"",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text  = "Try a different sender name, OTP, or message text.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 32.dp),
