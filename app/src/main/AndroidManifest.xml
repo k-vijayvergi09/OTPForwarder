@@ -68,6 +68,22 @@
             android:name="com.samsung.android.otpforwarder.core.sms.NotificationActionReceiver"
             android:exported="false" />
 
+        <!--
+            FileProvider used to share developer debug log (.txt) files via
+            ACTION_SEND without requiring any external-storage permissions.
+            The authority must match the string used in FileProvider.getUriForFile()
+            in LogsScreen ("${packageName}.fileprovider").
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Disable the default WorkManagerInitializer so Hilt can configure it -->
         <provider
             android:name="androidx.startup.InitializationProvider"

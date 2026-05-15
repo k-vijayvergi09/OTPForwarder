@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider paths for sharing developer debug log files.
+    The cache-path entry exposes context.cacheDir so the exported .txt
+    files written by LogsScreen can be shared via ACTION_SEND without
+    requiring any external-storage permissions.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path
+        name="debug_logs"
+        path="." />
+</paths>

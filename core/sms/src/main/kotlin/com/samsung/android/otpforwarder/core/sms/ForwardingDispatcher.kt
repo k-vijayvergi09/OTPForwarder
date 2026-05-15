@@ -8,12 +8,17 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.samsung.android.otpforwarder.core.common.coroutines.ApplicationScope
+import com.samsung.android.otpforwarder.core.domain.DevLogRepository
 import com.samsung.android.otpforwarder.core.domain.ForwardingRepository
 import com.samsung.android.otpforwarder.core.domain.SettingsRepository
+import com.samsung.android.otpforwarder.core.model.DevLogEntry
+import com.samsung.android.otpforwarder.core.model.DevLogStage
+import com.samsung.android.otpforwarder.core.model.DevLogStatus
 import com.samsung.android.otpforwarder.core.model.OtpEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -43,6 +48,7 @@ class ForwardingDispatcher @Inject constructor(
     private val workManager: WorkManager,
     private val settingsRepository: SettingsRepository,
     private val forwardingRepository: ForwardingRepository,
+    private val devLogRepository: DevLogRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
 
@@ -121,6 +127,14 @@ class ForwardingDispatcher @Inject constructor(
                 "(sender=%s, delay=%ds)",
             event.id, event.sender, delaySeconds,
         )
+
+        devLogRepository.log(event.id, DevLogEntry(
+            timestamp = Clock.System.now(),
+            stage     = DevLogStage.WORKER_DISPATCHED,
+            status    = DevLogStatus.OK,
+            message   = "ForwardingWorker enqueued via WorkManager",
+            detail    = "delay=${delaySeconds}s policy=KEEP uniqueWorkName=forward_${event.id}",
+        ))
     }
 
     /**
@@ -166,12 +180,21 @@ class ForwardingDispatcher @Inject constructor(
             Timber.w("ForwardingDispatcher: Cannot force retry, record not found (id=%s)", eventId)
             return
         }
-        
+
         workManager.enqueueUniqueWork(
             "forward_${record.id}",
             ExistingWorkPolicy.REPLACE, // Override any existing job to force it immediately
             buildRequest(record.id, record.sender, record.fullBody, delaySeconds = 0L),
         )
+
+        devLogRepository.log(eventId, DevLogEntry(
+            timestamp = Clock.System.now(),
+            stage     = DevLogStage.WORKER_DISPATCHED,
+            status    = DevLogStatus.OK,
+            message   = "ForwardingWorker manually re-enqueued (force retry)",
+            detail    = "policy=REPLACE delay=0s",
+        ))
+
         Timber.i("ForwardingDispatcher: manually forced retry for id=%s", eventId)
     }
 }
