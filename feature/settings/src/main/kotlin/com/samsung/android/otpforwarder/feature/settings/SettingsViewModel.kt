@@ -21,8 +21,8 @@ class SettingsViewModel @Inject constructor(
                     state.copy(
                         isForwardingEnabled    = appSettings.isForwardingEnabled,
                         forwardingDelaySeconds = appSettings.forwardingDelaySeconds,
-                        isBiometricLockEnabled = appSettings.isBiometricLockEnabled,
                         notificationsEnabled   = appSettings.notificationsEnabled,
+                        isDeveloperModeEnabled = appSettings.isDeveloperModeEnabled,
                         isLoading              = false,
                     )
                 }
@@ -42,28 +42,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        SettingsIntent.ToggleBiometricLock -> intent {
-            settingsRepository.updateSettings { it.copy(isBiometricLockEnabled = !it.isBiometricLockEnabled) }
-        }
-
         SettingsIntent.ToggleNotifications -> intent {
             settingsRepository.updateSettings { it.copy(notificationsEnabled = !it.notificationsEnabled) }
         }
 
-        // ── Data management ───────────────────────────────────────────────────
-
-        SettingsIntent.ExportConfig -> intent {
-            postSideEffect(SettingsSideEffect.LaunchExportFilePicker)
-        }
-
-        SettingsIntent.ImportConfig -> intent {
-            postSideEffect(SettingsSideEffect.LaunchImportFilePicker)
-        }
-
-        // ── Navigation ────────────────────────────────────────────────────────
-
-        SettingsIntent.ConfigureGmail -> intent {
-            postSideEffect(SettingsSideEffect.NavigateToGmailSetup)
+        SettingsIntent.ToggleDeveloperMode -> intent {
+            settingsRepository.updateSettings { it.copy(isDeveloperModeEnabled = !it.isDeveloperModeEnabled) }
         }
 
         SettingsIntent.NavigateBack -> intent {

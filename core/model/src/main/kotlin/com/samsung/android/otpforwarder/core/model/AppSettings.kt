@@ -12,14 +12,14 @@ package com.samsung.android.otpforwarder.core.model
  *
  * @param isForwardingEnabled    Master switch — when false no SMS is forwarded.
  * @param forwardingDelaySeconds Delay before forwarding (0 = immediate, max 30s).
- * @param isBiometricLockEnabled Whether the app requires biometric / PIN to open.
  * @param notificationsEnabled   Whether to show a notification on each forwarding event.
+ * @param isDeveloperModeEnabled Whether debug features and tools are visible.
  * @param isFirstLaunch          Cleared after onboarding completes.
  */
 data class AppSettings(
     val isForwardingEnabled: Boolean = true,
     val forwardingDelaySeconds: Int = 0,
-    val isBiometricLockEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
+    val isDeveloperModeEnabled: Boolean = false,
     val isFirstLaunch: Boolean = true,
 )

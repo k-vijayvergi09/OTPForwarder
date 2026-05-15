@@ -17,11 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Email
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.FileUpload
-import androidx.compose.material.icons.rounded.Fingerprint
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.ToggleOn
@@ -51,18 +47,14 @@ import org.orbitmvi.orbit.compose.collectSideEffect
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit = {},
-    onNavigateToGmailSetup: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state = viewModel.collectAsState().value
 
     viewModel.collectSideEffect { effect ->
         when (effect) {
-            SettingsSideEffect.GoBack                 -> onNavigateBack()
-            SettingsSideEffect.NavigateToGmailSetup   -> onNavigateToGmailSetup()
-            SettingsSideEffect.LaunchExportFilePicker -> { /* TODO M5: file picker */ }
-            SettingsSideEffect.LaunchImportFilePicker -> { /* TODO M5: file picker */ }
-            is SettingsSideEffect.ShowSnackbar        -> { /* TODO M5: snackbar host */ }
+            SettingsSideEffect.GoBack              -> onNavigateBack()
+            is SettingsSideEffect.ShowSnackbar     -> { /* TODO M5: snackbar host */ }
         }
     }
 
@@ -105,33 +97,6 @@ internal fun SettingsContent(
                 }
             }
 
-            // ── Email ─────────────────────────────────────────────────────────
-            item {
-                SectionHeader("Email")
-                SettingsGroup {
-                    ActionRow(
-                        icon     = Icons.Rounded.Email,
-                        title    = "Gmail account",
-                        subtitle = "Configure the Gmail account used to forward OTPs",
-                        onClick  = { onIntent(SettingsIntent.ConfigureGmail) },
-                    )
-                }
-            }
-
-            // ── Security ──────────────────────────────────────────────────────
-            item {
-                SectionHeader("Security")
-                SettingsGroup {
-                    SwitchRow(
-                        icon     = Icons.Rounded.Fingerprint,
-                        title    = "Biometric lock",
-                        subtitle = "Require fingerprint or PIN to open app",
-                        checked  = state.isBiometricLockEnabled,
-                        onToggle = { onIntent(SettingsIntent.ToggleBiometricLock) },
-                    )
-                }
-            }
-
             // ── Notifications ─────────────────────────────────────────────────
             item {
                 SectionHeader("Notifications")
@@ -146,22 +111,16 @@ internal fun SettingsContent(
                 }
             }
 
-            // ── Data ──────────────────────────────────────────────────────────
+            // ── Advanced ──────────────────────────────────────────────────────
             item {
-                SectionHeader("Data")
+                SectionHeader("Advanced")
                 SettingsGroup {
-                    ActionRow(
-                        icon     = Icons.Rounded.FileUpload,
-                        title    = "Export config",
-                        subtitle = "Save destinations & settings as encrypted JSON",
-                        onClick  = { onIntent(SettingsIntent.ExportConfig) },
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
-                    ActionRow(
-                        icon     = Icons.Rounded.FileDownload,
-                        title    = "Import config",
-                        subtitle = "Restore from a previously exported file",
-                        onClick  = { onIntent(SettingsIntent.ImportConfig) },
+                    SwitchRow(
+                        icon     = Icons.Rounded.Code,
+                        title    = "Developer mode",
+                        subtitle = "Enable debug features and tools",
+                        checked  = state.isDeveloperModeEnabled,
+                        onToggle = { onIntent(SettingsIntent.ToggleDeveloperMode) },
                     )
                 }
                 Spacer(Modifier.height(32.dp))
@@ -260,48 +219,6 @@ private fun SwitchRow(
     }
 }
 
-@Composable
-private fun ActionRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector        = icon,
-            contentDescription = null,
-            tint               = MaterialTheme.colorScheme.primary,
-            modifier           = Modifier.size(24.dp),
-        )
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text  = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text  = subtitle,
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.3.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Icon(
-            imageVector        = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint               = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier           = Modifier.size(20.dp),
-        )
-    }
-}
-
 // ── Delay slider row ──────────────────────────────────────────────────────────
 
 @Composable
@@ -368,8 +285,8 @@ private fun SettingsPreview() {
             state = SettingsState(
                 isForwardingEnabled    = true,
                 forwardingDelaySeconds = 3,
-                isBiometricLockEnabled = false,
                 notificationsEnabled   = true,
+                isDeveloperModeEnabled = false,
                 isLoading              = false,
             ),
             onIntent = {},

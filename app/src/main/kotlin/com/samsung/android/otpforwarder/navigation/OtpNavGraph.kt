@@ -69,7 +69,6 @@ fun OtpNavGraph(
         composable(AppDestination.Settings.route) {
             SettingsScreen(
                 onNavigateBack         = { navController.popBackStack() },
-                onNavigateToGmailSetup = { navController.navigate(AppDestination.GmailSetup.route) },
             )
         }
 

@@ -34,8 +34,8 @@ class DataStoreSettingsRepository @Inject constructor(
         AppSettings(
             isForwardingEnabled    = prefs[Keys.IS_FORWARDING_ENABLED] ?: true,
             forwardingDelaySeconds = prefs[Keys.FORWARDING_DELAY_SECONDS] ?: 0,
-            isBiometricLockEnabled = prefs[Keys.IS_BIOMETRIC_LOCK_ENABLED] ?: false,
             notificationsEnabled   = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true,
+            isDeveloperModeEnabled = prefs[Keys.IS_DEVELOPER_MODE_ENABLED] ?: false,
             isFirstLaunch          = prefs[Keys.IS_FIRST_LAUNCH] ?: true,
         )
     }
@@ -44,11 +44,11 @@ class DataStoreSettingsRepository @Inject constructor(
         val current = settings.first()
         val updated = transform(current)
         dataStore.edit { prefs ->
-            prefs[Keys.IS_FORWARDING_ENABLED]     = updated.isForwardingEnabled
-            prefs[Keys.FORWARDING_DELAY_SECONDS]  = updated.forwardingDelaySeconds
-            prefs[Keys.IS_BIOMETRIC_LOCK_ENABLED] = updated.isBiometricLockEnabled
-            prefs[Keys.NOTIFICATIONS_ENABLED]     = updated.notificationsEnabled
-            prefs[Keys.IS_FIRST_LAUNCH]           = updated.isFirstLaunch
+            prefs[Keys.IS_FORWARDING_ENABLED]    = updated.isForwardingEnabled
+            prefs[Keys.FORWARDING_DELAY_SECONDS] = updated.forwardingDelaySeconds
+            prefs[Keys.NOTIFICATIONS_ENABLED]    = updated.notificationsEnabled
+            prefs[Keys.IS_DEVELOPER_MODE_ENABLED] = updated.isDeveloperModeEnabled
+            prefs[Keys.IS_FIRST_LAUNCH]          = updated.isFirstLaunch
         }
     }
 
@@ -57,8 +57,8 @@ class DataStoreSettingsRepository @Inject constructor(
     private object Keys {
         val IS_FORWARDING_ENABLED     = booleanPreferencesKey("is_forwarding_enabled")
         val FORWARDING_DELAY_SECONDS  = intPreferencesKey("forwarding_delay_seconds")
-        val IS_BIOMETRIC_LOCK_ENABLED = booleanPreferencesKey("is_biometric_lock_enabled")
         val NOTIFICATIONS_ENABLED     = booleanPreferencesKey("notifications_enabled")
+        val IS_DEVELOPER_MODE_ENABLED = booleanPreferencesKey("is_developer_mode_enabled")
         val IS_FIRST_LAUNCH           = booleanPreferencesKey("is_first_launch")
     }
 }
