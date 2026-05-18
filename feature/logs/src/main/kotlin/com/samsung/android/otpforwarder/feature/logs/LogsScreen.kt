@@ -1,6 +1,7 @@
 package com.samsung.android.otpforwarder.feature.logs
 
 import android.content.Intent
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -71,7 +72,6 @@ import com.samsung.android.otpforwarder.core.designsystem.theme.OtpTheme
 import com.samsung.android.otpforwarder.core.model.ForwardingStatus
 import org.orbitmvi.orbit.compose.collectAsState
 import org.orbitmvi.orbit.compose.collectSideEffect
-import timber.log.Timber
 import java.io.File
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -121,9 +121,14 @@ private fun shareDevLogFile(
             putExtra(Intent.EXTRA_SUBJECT, "OTP Forwarder Debug Log")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(shareIntent, "Export Debug Log"))
+        val chooser = Intent.createChooser(shareIntent, "Export Debug Log").apply {
+            // Required when startActivity is called from a non-Activity context
+            // (e.g. LaunchedEffect / coroutine scope) or on certain OEMs.
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(chooser)
     } catch (e: Exception) {
-        Timber.e(e, "LogsScreen: failed to share dev log file")
+        Log.e(e.toString(), "LogsScreen: failed to share dev log file")
     }
 }
 
@@ -326,7 +331,7 @@ private fun TodaySummaryCard(
 private fun LogRowItem(
     item: LogRowUiItem,
     isDeveloperMode: Boolean,
-    hasDevLog: Boolean,
+    hasDevLog: Boolean,        // true = full pipeline trace captured; false = fallback summary only
     onIntent: (LogsIntent) -> Unit,
     onRetry: (String) -> Unit,
     onExport: (String) -> Unit,
@@ -416,15 +421,20 @@ private fun LogRowItem(
                 }
             }
             // ── Developer Mode: export button ─────────────────────────────────
-            if (isDeveloperMode && hasDevLog) {
+            // Always visible in dev mode. Full-colour = complete pipeline trace
+            // captured this session. Dimmed = fallback summary from DB record.
+            if (isDeveloperMode) {
                 IconButton(
                     onClick  = { onExport(item.id) },
                     modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
                         imageVector        = Icons.Rounded.Share,
-                        contentDescription = "Export debug log",
-                        tint               = MaterialTheme.colorScheme.tertiary,
+                        contentDescription = if (hasDevLog) "Export pipeline trace" else "Export record summary",
+                        tint               = if (hasDevLog)
+                            MaterialTheme.colorScheme.tertiary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                         modifier           = Modifier.size(18.dp),
                     )
                 }

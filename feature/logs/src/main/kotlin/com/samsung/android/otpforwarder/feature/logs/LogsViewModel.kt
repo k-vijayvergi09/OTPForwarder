@@ -95,17 +95,63 @@ class LogsViewModel @Inject constructor(
         }
 
         is LogsIntent.ExportDevLog -> intent {
-            val devLog = state.devLogs[intent.id] ?: return@intent
-            val sender = state.groups.flatMap { it.items }
-                .find { it.id == intent.id }?.sender ?: "Unknown"
-            val content  = formatDevLogAsText(devLog, sender)
+            val record = state.groups.flatMap { it.items }.find { it.id == intent.id }
+                ?: return@intent
+            val devLog  = state.devLogs[intent.id]
+            val content = if (devLog != null) {
+                formatDevLogAsText(devLog, record.sender)
+            } else {
+                // DevLogRepository is in-memory — no trace for OTPs that arrived
+                // before this app session or before Dev Mode was enabled.
+                // Generate a summary from the persisted ForwardingRecord data instead.
+                formatFallbackLogAsText(record)
+            }
             val filename = "otp_debug_${intent.id.take(8)}.txt"
             postSideEffect(LogsSideEffect.ShareDevLog(content = content, filename = filename))
         }
     }
 }
 
-// ── Internal bundle ───────────────────────────────────────────────────────────
+// ── Dev log formatters ────────────────────────────────────────────────────────
+
+/**
+ * No in-memory pipeline trace is available (OTP arrived before this session
+ * or before Dev Mode was enabled). Build a best-effort summary from the
+ * persisted [LogRowUiItem] fields so the export is always useful.
+ */
+private fun formatFallbackLogAsText(record: LogRowUiItem): String {
+    val tz  = TimeZone.currentSystemDefault()
+    val now = Clock.System.now().toLocalDateTime(tz)
+    val nowStr = "%04d-%02d-%02d %02d:%02d:%02d".format(
+        now.year, now.monthNumber, now.dayOfMonth,
+        now.hour, now.minute, now.second,
+    )
+    return buildString {
+        appendLine("OTP Forwarder — Developer Debug Log")
+        appendLine("=====================================")
+        appendLine("Event ID  : ${record.id}")
+        appendLine("Sender    : ${record.sender}")
+        appendLine("Generated : $nowStr")
+        appendLine()
+        appendLine("NOTE: No detailed pipeline trace is available for this event.")
+        appendLine("The full trace is captured only for OTPs that arrive while")
+        appendLine("Developer Mode is enabled in the current app session.")
+        appendLine("The summary below is reconstructed from persisted record data.")
+        appendLine()
+        appendLine("RECORD SUMMARY")
+        appendLine("--------------")
+        appendLine("OTP Code    : ${record.otp}")
+        appendLine("Status      : ${record.status.name}")
+        appendLine("Delivery    : ${record.deliveryLine}")
+        appendLine("Received    : ${record.timeLabel}")
+        appendLine()
+        appendLine("FULL MESSAGE BODY")
+        appendLine("-----------------")
+        appendLine(record.fullBody)
+        appendLine()
+        appendLine("— end of log —")
+    }
+}
 
 private data class DataBundle(
     val records:  List<ForwardingRecord>,
